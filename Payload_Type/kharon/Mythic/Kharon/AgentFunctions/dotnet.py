@@ -155,7 +155,7 @@ class DotnetVerArguments( TaskArguments ):
     async def parse_arguments(self):
         pass
 
-class DotnetInlineArguments( TaskArguments ):
+class DotnetExecArguments( TaskArguments ):
     def __init__(self, command_line, **kwargs):
         super().__init__(command_line, **kwargs)
         self.args = [
@@ -364,7 +364,7 @@ class DotnetInlineArguments( TaskArguments ):
             response.Error = f"Failed to get files: {file_resp.Error}"
             return response
 
-class DotnetInlineCommand(CommandBase):
+class DotnetExecCommand(CommandBase):
     cmd = "dotnet-exec"
     needs_admin = False
     help_cmd = \
@@ -387,7 +387,7 @@ class DotnetInlineCommand(CommandBase):
     description = "Execute a .NET assembly in the current process with support for file uploads and complex arguments"
     version = 2
     author = "@ Oblivion"
-    argument_class = DotnetInlineArguments
+    argument_class = DotnetExecArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.Windows],
         builtin=True,

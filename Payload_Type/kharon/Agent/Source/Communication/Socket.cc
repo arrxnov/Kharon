@@ -70,7 +70,7 @@ auto DECLFN Socket::RmCtx(
     return ERROR_NOT_FOUND;
 }
 
-auto Socket::RecvAll( SOCKET Socket, PVOID Buffer, DWORD Length, PDWORD BytesRead ) -> BOOL {
+auto DECLFN Socket::RecvAll( SOCKET Socket, PVOID Buffer, DWORD Length, PDWORD BytesRead ) -> BOOL {
     DWORD tret   = 0;
     DWORD nret   = 0;
     PVOID Start = Buffer;
@@ -95,7 +95,7 @@ auto Socket::RecvAll( SOCKET Socket, PVOID Buffer, DWORD Length, PDWORD BytesRea
     return TRUE;
 }
 
-auto Socket::InitWSA( VOID ) -> BOOL {
+auto DECLFN Socket::InitWSA( VOID ) -> BOOL {
     WSADATA WsData = { 0 };
     DWORD   Result = 0;
 

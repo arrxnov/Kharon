@@ -36,6 +36,9 @@ async def CheckinC2(Data, Key) -> dict:
     print(f"    Image Path: {ImagePath}")
     print(f"    Internal IP: {InternIp}")
 
+    ascii_cp = Psr.Int32()
+    oem_cp   = Psr.Int32()
+
     # Injection
     alloc_method = Psr.Int32()
     write_method = Psr.Int32()

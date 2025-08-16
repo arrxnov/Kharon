@@ -7,6 +7,8 @@ auto DECLFN Mask::Main(
 ) -> BOOL {
     KhDbg( "[====== Starting the sleep ======]" );
 
+    if ( ! Time ) return FALSE;
+
     BOOL  Success = FALSE;
     ULONG RndTime = 0;
     

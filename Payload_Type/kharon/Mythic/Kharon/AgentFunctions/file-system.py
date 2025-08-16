@@ -307,6 +307,8 @@ class LsCommand(CommandBase):
 
             sub_id = int.from_bytes(Psr.Pad(1), byteorder="big")
 
+            current_path = Psr.Str()
+
             if sub_id == SB_FS_LS:
                 parent_dir = MythicRPCFileBrowserData(
                     IsFile=False,
