@@ -497,6 +497,9 @@ async def StorageExtract( UUID ):
     internal_ip = ["0.0.0.0"]  # Default value
     architecture = OscArc
 
+    ascii_cp = Psr.Int32()
+    oem_cp   = Psr.Int32()
+
     # Injection
     alloc_method = Psr.Int32()
     write_method = Psr.Int32()

