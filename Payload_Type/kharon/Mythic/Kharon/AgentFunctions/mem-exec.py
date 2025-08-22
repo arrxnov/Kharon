@@ -274,7 +274,6 @@ class ExecbofCommand(CommandBase):
         try:
             if not response:
                 logging.warning("Empty response received")
-                await write_console(task.Task.ID, "[!] Received empty response from agent")
                 return resp
 
             RawResponse = bytes.fromhex( response )
@@ -303,7 +302,7 @@ class ExecbofCommand(CommandBase):
                 else:
                     MessageOut = f"[?] Received Unknown Callback:\n{CallbackOut}"
             await write_console( task.Task.ID, MessageOut )
-            
+
         except Exception as e:
             await write_console(task.Task.ID, f"[!] Error in process_response: {str(e)}")
             return resp
