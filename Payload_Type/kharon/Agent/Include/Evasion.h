@@ -86,6 +86,8 @@ struct _INJ_OBJ {
     PVOID  BaseAddress;
     BOOL   Persist;
 
+    CHAR*  TargetDll; // stomp case
+
     ULONG ObjID;
 };
 typedef _INJ_OBJ INJ_OBJ;

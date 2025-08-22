@@ -2001,7 +2001,7 @@ public:
         HANDLE   WriteHandle;
     } Node[15];
 
-    auto Reflect(
+    auto Stomp(
         _In_    BYTE*    Buffer,
         _In_    SIZE_T   Size,
         _In_    BYTE*    ArgBuff,
