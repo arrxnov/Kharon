@@ -271,32 +271,42 @@ class ExecbofCommand(CommandBase):
 
     async def process_response(self, task: PTTaskMessageAllData, response: any) -> PTTaskProcessResponseMessageResponse:
         resp = PTTaskProcessResponseMessageResponse(TaskID=task.Task.ID, Success=True)
-    
-        RawResponse = bytes.fromhex( response )
+        try:
+            if not response:
+                logging.warning("Empty response received")
+                await write_console(task.Task.ID, "[!] Received empty response from agent")
+                return resp
 
-        Psr = Parser( RawResponse, len( RawResponse ) )
+            RawResponse = bytes.fromhex( response )
 
-        BofCommandID = Psr.Int32()
-        CallbackType = Psr.Int32()
-        CallbackOut  = Psr.Str()
+            if len(RawResponse) < 4:
+                await write_console(task.Task.ID, f"[!] Response data too small ({len(RawResponse)} bytes)")
+                return resp
 
-        logging.info(CallbackType)
+            Psr = Parser( RawResponse, len( RawResponse ) )
 
-        MessageOut = f""
+            BofCommandID = Psr.Int32()
+            CallbackType = Psr.Int32()
+            CallbackOut  = Psr.Str()
 
-        bof_command_ids = {cmd["sub"] for cmd in Commands["bof"].values()}
+            logging.info(CallbackType)
 
-        if BofCommandID not in bof_command_ids:
-            if CallbackType == KH_CALLBACK_OUTPUT:
-                MessageOut = f"[+] Received Output:\n{CallbackOut}"
-            elif CallbackType == KH_CALLBACK_ERROR:
-                MessageOut = f"[x] Received Error:\n{CallbackOut}"
-            else:
-                MessageOut = f"[?] Received Unknown Callback:\n{CallbackOut}"
+            MessageOut = f""
 
-        await write_console( task.Task.ID, MessageOut )
+            bof_command_ids = {cmd["sub"] for cmd in Commands["bof"].values()}
 
-        return resp
+            if BofCommandID not in bof_command_ids:
+                if CallbackType == KH_CALLBACK_OUTPUT:
+                    MessageOut = f"[+] Received Output:\n{CallbackOut}"
+                elif CallbackType == KH_CALLBACK_ERROR:
+                    MessageOut = f"[x] Received Error:\n{CallbackOut}"
+                else:
+                    MessageOut = f"[?] Received Unknown Callback:\n{CallbackOut}"
+            await write_console( task.Task.ID, MessageOut )
+            
+        except Exception as e:
+            await write_console(task.Task.ID, f"[!] Error in process_response: {str(e)}")
+            return resp
 
 class ExecScArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
