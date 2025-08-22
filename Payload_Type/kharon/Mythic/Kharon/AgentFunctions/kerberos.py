@@ -10,8 +10,9 @@ class KerbeusBaseCommand(CommandBase):
     )
     
     async def load_bof(self, task: PTTaskMessageAllData):
-        bof_name = self.cmd.replace("krb-", "")
-        return await get_content_by_name(f"{bof_name}.x64.o", task.Task.ID)
+        # bof_name = self.cmd.replace("krb-", "")
+        bof_name = self.cmd
+        return await get_content_by_name(f"kh_{bof_name}.x64.o", task.Task.ID)
 
 # ========== AS-REP Roasting ==========
 class KrbAsreproastingArguments(TaskArguments):
@@ -97,7 +98,7 @@ class KrbAsreproastingCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")  # Add space before - for better readability
         )
 
@@ -293,7 +294,7 @@ class KrbAsktgtCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -480,7 +481,7 @@ class KrbAsktgsCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -578,7 +579,7 @@ class KrbChangepwCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -629,7 +630,7 @@ class KrbDescribeCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -718,7 +719,7 @@ class KrbDumpCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -").strip()
         )
 
@@ -793,7 +794,7 @@ class KrbHashCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -899,7 +900,7 @@ class KrbKerberoastingCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -988,7 +989,7 @@ class KrbKlistCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -").strip()
         )
 
@@ -1051,7 +1052,7 @@ class KrbPttCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -1104,7 +1105,7 @@ class KrbPurgeCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -1180,7 +1181,7 @@ class KrbRenewCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -1361,7 +1362,7 @@ class KrbS4uCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -1539,7 +1540,7 @@ class KrbCrossS4uCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -1592,7 +1593,7 @@ class KrbTgtdelegCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -")
         )
 
@@ -1681,7 +1682,7 @@ class KrbTriageCommand(KerbeusBaseCommand):
         
         return PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
-            CommandName=self.cmd,
+            CommandName="exec-bof",
             DisplayParams=cmd_str.replace("-", " -").strip()
         )
 
