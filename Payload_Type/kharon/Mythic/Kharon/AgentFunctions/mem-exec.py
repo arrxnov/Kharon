@@ -246,6 +246,8 @@ class ExecbofCommand(CommandBase):
                         console_out = f"[+] Sending \"{file_name}\" with {len(file_contents.Content)} bytes\n"
                         display_prm = f"-file {file_name}"
 
+                        logging.info(f"here:")
+
                         await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                             TaskID=taskData.Task.ID,
                             Response=console_out
@@ -253,6 +255,8 @@ class ExecbofCommand(CommandBase):
 
                         if taskData.args.get_arg("bof_args"):
                             display_prm += f" -args {taskData.args.get_arg('bof_args')}"
+                        else:
+                            taskData.args.remove_arg("bof_args")
 
                         response.DisplayParams = display_prm
 
