@@ -59,7 +59,7 @@ class KharonTranslator( TranslationContainer ):
         Dbg8( f"response {( Response.Message )}" );
         Dbg8( "-----------------------\n" );
 
-        return Response
+        return Response 
 
     async def translate_from_c2_format( self, InputMsg: TrCustomMessageToMythicC2FormatMessage ) -> TrCustomMessageToMythicC2FormatMessageResponse:
         Dbg7( "------------------------" );
