@@ -1,13 +1,13 @@
 #include <Kharon.h>
 
-BOOL DECLFN Injection::Standard(
+auto DECLFN Injection::Standard(
     _In_    BYTE*    Buffer,
     _In_    SIZE_T   Size,
     _In_    BYTE*    ArgBuff,
     _In_    SIZE_T   ArgSize,
     _In_    CHAR*    TaskUUID,
     _Inout_ INJ_OBJ* Object
-) {
+) -> BOOL {
     CHAR* DefUUID = TaskUUID;
 
     PVOID  BaseAddress = nullptr;
@@ -113,4 +113,3 @@ BOOL DECLFN Injection::Standard(
 
     return Cleanup( TRUE );
 }
-

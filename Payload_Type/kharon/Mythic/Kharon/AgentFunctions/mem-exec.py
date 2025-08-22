@@ -199,7 +199,7 @@ class ExecbofCommand(CommandBase):
 
     async def create_go_tasking(self, taskData: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         response = PTTaskCreateTaskingMessageResponse(
-            TaskID=taskData.task.ID,
+            TaskID=taskData.Task.ID,
             Success=True,
         )
         
@@ -211,7 +211,7 @@ class ExecbofCommand(CommandBase):
             groupName = taskData.args.get_parameter_group_name()
             if groupName == "New":
                 file_resp = await SendMythicRPCFileSearch(MythicRPCFileSearchMessage(
-                    TaskID=taskData.task.ID,
+                    TaskID=taskData.Task.ID,
                     AgentFileID=taskData.args.get_arg("bof_file")
                 ))
                 if file_resp.Success:
@@ -223,7 +223,7 @@ class ExecbofCommand(CommandBase):
                     raise Exception("Error from Mythic trying to get file: " + str(file_resp.Error))
             elif groupName == "Default":
                 file_resp = await SendMythicRPCFileSearch(MythicRPCFileSearchMessage(
-                    TaskID=taskData.task.ID,
+                    TaskID=taskData.Task.ID,
                     Filename=taskData.args.get_arg("bof_name"),
                     LimitByCallback=False,
                     MaxResults=1
@@ -247,7 +247,7 @@ class ExecbofCommand(CommandBase):
                         display_prm = f"-file {file_name}"
 
                         await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
-                            TaskID=taskData.task.ID,
+                            TaskID=taskData.Task.ID,
                             Response=console_out
                         ))
 

