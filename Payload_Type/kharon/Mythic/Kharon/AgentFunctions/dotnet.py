@@ -114,7 +114,7 @@ class PwPickCommand(CommandBase):
         if not content:
             raise Exception("File BOF 'kh_dotnet_assembly.x64.bin' not found!")
 
-        pwpick_content: bytes = await get_content_by_name("kw_pwsh.x64.exe", task.Task.ID)
+        pwpick_content: bytes = await get_content_by_name("kh_pwsh.x64.exe", task.Task.ID)
         args:str = f"{command} {script}"
 
         method = 0
