@@ -135,7 +135,8 @@ def RespTasking(Tasks, Socks) -> bytes:
 
             ScArgs = []
             if "sc_args" in Parameters:
-                ScArgs = ast.literal_eval(Parameters["sc_args"])
+                Dbg3(f"sc_args_ex {Parameters['sc_args']}");
+                ScArgs = json.loads(Parameters["sc_args"])
 
             if ScArgs and isinstance(ScArgs, list):
                 Dbg3(f"Processing sc_args")

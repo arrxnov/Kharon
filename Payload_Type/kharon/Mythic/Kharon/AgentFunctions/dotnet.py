@@ -119,12 +119,15 @@ class PwPickCommand(CommandBase):
 
         method = 0
 
+        characters = string.ascii_letters + string.digits 
+        appdom = ''.join(random.choice(characters) for _ in range(10))
+
         sc_args = [
             {"type": "int32", "value": method},
             {"type": "bytes", "value": pwpick_content.hex()},  
             {"type": "char" , "value": args},                        
-            {"type": "char" , "value": appdm},                       
-            {"type": "char" , "value": vers},                        
+            {"type": "char" , "value": appdom},                       
+            {"type": "char" , "value": "v0.0.00000"},                        
             {"type": "int32", "value": 0},           # keep load
             {"type": "int32", "value": bypass_flags},                
             {"type": "int32", "value": patchexit},                   
