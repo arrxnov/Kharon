@@ -1243,6 +1243,8 @@ auto DECLFN Task::Process(
             HANDLE ProcessHandle = Self->Ps->Open( PROCESS_TERMINATE, FALSE, ProcessId );
 
             if ( ProcessHandle == INVALID_HANDLE_VALUE ) RoutineStatus = FALSE;
+
+            RoutineStatus = Self->Krnl32.TerminateProcess( ProcessHandle, EXIT_SUCCESS );
             
             Self->Pkg->Int32( Package, RoutineStatus ); break;        
         }
