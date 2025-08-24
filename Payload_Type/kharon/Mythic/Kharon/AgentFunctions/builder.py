@@ -317,7 +317,7 @@ class KharonAgent(PayloadType):
                 await upload_file(dotnet_file, "Dotnet")
 
             for shellcode_file in shellcode_files:
-                await upload_file(dotnet_file, "Shellcode")
+                await upload_file(shellcode_file, "Shellcode")
 
         except Exception as main_exception:
             logging.error(f"[Modules Upload] Critical error in upload process: {str(main_exception)}")
