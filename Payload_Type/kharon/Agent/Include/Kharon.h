@@ -1539,6 +1539,8 @@ private:
 public:
     Jobs( Root::Kharon* KharonRf ) : Self( KharonRf ) {};
 
+    PACKAGE* PostJobs = nullptr;
+
     ULONG Count = 0;
     JOBS* List  = nullptr;
 
