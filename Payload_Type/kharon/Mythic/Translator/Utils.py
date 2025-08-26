@@ -123,6 +123,15 @@ T_PIVOT     = 21;
 T_POSTEX    = 22;
 T_SC_INJECT = 23;
 
+SB_TOKEN_GETUUID = 10;
+SB_TOKEN_STEAL   = 11;
+SB_TOKEN_MAKE    = 12;
+SB_TOKEN_GETPRIV = 13;
+SB_TOKEN_LISTPRIV= 14;
+SB_TOKEN_REV2SELF= 15;
+SB_TOKEN_USE     = 16;
+SB_TOKEN_RM      = 17;
+
 SB_POSTEX_INLINE = 0;
 SB_POSTEX_FORK   = 1;
 
@@ -192,6 +201,20 @@ Commands = {
     "upload":    {"hex_code": T_UPLOAD},
     "download":  {"hex_code": T_DOWNLOAD},
     "exec-bof":  {"hex_code": T_EXEC_BOF},
+
+    "token": {
+        "hex_code": T_TOKEN,
+        "subcommands": {
+            "getuuid"  : {"sub": SB_TOKEN_GETUUID},
+            "make"     : {"sub": SB_TOKEN_MAKE},
+            "steal"    : {"sub": SB_TOKEN_STEAL},
+            "getprivs" : {"sub": SB_TOKEN_GETPRIV},
+            "listprivs": {"sub": SB_TOKEN_LISTPRIV},
+            "use"      : {"sub": SB_TOKEN_USE},
+            "rm"       : {"sub": SB_TOKEN_RM},
+            "rev2self" : {"sub": SB_TOKEN_REV2SELF},
+        }
+    },
 
     "bof": {
         "whoami":     {"sub": BF_WHOAMI},

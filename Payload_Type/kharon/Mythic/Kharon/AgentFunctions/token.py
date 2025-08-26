@@ -4,6 +4,8 @@ from mythic_container.PayloadBuilder import *
 
 from .Utils.u import *
 
+logging.basicConfig(level=logging.INFO)
+
 class TokenUseArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
         super().__init__(command_line, **kwargs)
@@ -378,6 +380,7 @@ class TokenUUIDCommand(CommandBase):
             raw_response = bytes.fromhex(response)
             psr = Parser(raw_response, len(raw_response))
             
+            sub_id  = psr.Pad(1)
             success = psr.Int32()
 
             token_message = ""
@@ -400,7 +403,7 @@ class TokenUUIDCommand(CommandBase):
             )
 
         except Exception as e:
-            error_msg = f"Error processing token steal response: {str(e)}"
+            error_msg = f"Error processing token revert response: {str(e)}"
             await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                 TaskID=task.Task.ID,
                 Response=error_msg.encode('utf-8')
@@ -449,7 +452,7 @@ class TokenUUIDCommand(CommandBase):
             CommandName="token"
         )
         
-        task.args.add_arg("action", "getuuid")
+        task.args.add_arg("action", "getuuid", ParameterType.String)
         
         return response
 
@@ -466,10 +469,8 @@ class TokenUUIDCommand(CommandBase):
             psr = Parser(raw_response, len(raw_response))
             
             process_uuid = psr.Bytes()
-            thread_uuid  = psr.Bytes()
 
-            token_message  =  f"Process Token: {process_uuid.decode('utf-8', 'ignore')}\n"
-            token_message +=  f"Thread  Token: {thread_uuid.decode('utf-8', 'ignore')}\n"
+            token_message  =  f"Process Token: {process_uuid.decode('cp850', 'ignore')}\n"
 
             await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                 TaskID=task.Task.ID,
@@ -482,7 +483,7 @@ class TokenUUIDCommand(CommandBase):
             )
 
         except Exception as e:
-            error_msg = f"Error processing token steal response: {str(e)}"
+            error_msg = f"Error processing token getuuid response: {str(e)}"
             await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                 TaskID=task.Task.ID,
                 Response=error_msg.encode('utf-8')
@@ -546,14 +547,20 @@ class TokenListPrivsCommand(CommandBase):
             
             raw_response = bytes.fromhex(response)
             psr = Parser(raw_response, len(raw_response))
-            token_message  = "[+]"
+            token_message  = ""
             
+            sub_id  = psr.Pad(1)
             list_priv_count = psr.Int32()
+
+            logging.info(f"{list_priv_count}")
             
-            for i in list_priv_count:
+            for i in range(list_priv_count):
                 priv_name = psr.Str()
                 priv_attr = psr.Int32()
-                token_message += f" {priv_name} | {priv_attr}"   
+                status = "Enabled" if priv_attr != 0 else "Disabled"
+
+                token_message += f"{priv_name.ljust(30)} | {priv_attr} ({status})\n"
+
 
             await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                 TaskID=task.Task.ID,
@@ -566,7 +573,7 @@ class TokenListPrivsCommand(CommandBase):
             )
 
         except Exception as e:
-            error_msg = f"Error processing token steal response: {str(e)}"
+            error_msg = f"Error processing token listprivs response: {str(e)}"
             await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                 TaskID=task.Task.ID,
                 Response=error_msg.encode('utf-8')
@@ -732,7 +739,6 @@ class TokenMakeCommand(CommandBase):
     )
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
-        # Build display parameters for UI
         display_params = f"-username {task.args.get_arg('username')} -password {task.args.get_arg('username')}"
         if task.args.get_arg("domain"):
             display_params += f" -domain {task.args.get_arg('domain')}"
@@ -743,7 +749,6 @@ class TokenMakeCommand(CommandBase):
             CommandName=self.cmd
         )
         
-        # Set the action for the agent to know this is a "make" operation
         task.args.add_arg("action", "make")
         
         return response

