@@ -468,6 +468,7 @@ class TokenUUIDCommand(CommandBase):
             raw_response = bytes.fromhex(response)
             psr = Parser(raw_response, len(raw_response))
             
+            sub_id = psr.Pad(1)
             process_uuid = psr.Bytes()
 
             token_message  =  f"Process Token: {process_uuid.decode('cp850', 'ignore')}\n"
