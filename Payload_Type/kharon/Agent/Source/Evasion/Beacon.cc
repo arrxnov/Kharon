@@ -53,8 +53,8 @@ auto DECLFN Coff::Printf(
     // measure
     va_start( VaList, fmt );
     MsgSize = Self->Msvcrt.vsnprintf( nullptr, 0, fmt, VaList );
-    va_end( VaList);
-    if (MsgSize < 0) {
+    va_end( VaList );
+    if ( MsgSize < 0 ) {
         KhDbg( "Printf: vsnprintf size probe failed" ); goto _KH_END;
     }
 
