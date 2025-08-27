@@ -1233,8 +1233,9 @@ public:
         ApiTable[21] = { Hsh::Str("BeaconFormatInt"),              reinterpret_cast<PVOID>(&Coff::FmtInt) },
         ApiTable[22] = { Hsh::Str("BeaconFormatPrintf"),           reinterpret_cast<PVOID>(&Coff::FmtPrintf) },
         ApiTable[23] = { Hsh::Str("BeaconFormatReset"),            reinterpret_cast<PVOID>(&Coff::FmtReset) },
-        ApiTable[24] = { Hsh::Str("BeaconWriteAPC"),               reinterpret_cast<PVOID>(&Coff::WriteApc) },
-        ApiTable[25] = { Hsh::Str("BeaconDriAlloc"),               reinterpret_cast<PVOID>(&Coff::DriAlloc) },
+        ApiTable[24] = { Hsh::Str("BeaconFormatToString"),         reinterpret_cast<PVOID>(&Coff::FmtToString) },
+        ApiTable[25] = { Hsh::Str("BeaconWriteAPC"),               reinterpret_cast<PVOID>(&Coff::WriteApc) },
+        ApiTable[26] = { Hsh::Str("BeaconDriAlloc"),               reinterpret_cast<PVOID>(&Coff::DriAlloc) },
     };
 
     auto Add(
