@@ -17,7 +17,8 @@ class KrbGenericArguments(TaskArguments):
                     name="input",
                     type=ParameterType.String,
                     description="kerbeus entry",
-                    default_value=self.command_line
+                    default_value=self.command_line,
+                    value=self.command_line
                 )
             )
 class KrbAsrepRoastingCommand(CommandBase):
