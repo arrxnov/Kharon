@@ -1366,6 +1366,9 @@ auto DECLFN Task::Exit(
 ) -> ERROR_CODE {
     INT8 ExitType = Self->Psr->Byte( Job->Psr );
 
+    Job->State    = KH_JOB_READY_SEND;
+    Job->ExitCode = KhRetSuccess;
+    
     Self->Jbs->Send( Self->Jbs->PostJobs );
     Self->Jbs->Cleanup();
 
