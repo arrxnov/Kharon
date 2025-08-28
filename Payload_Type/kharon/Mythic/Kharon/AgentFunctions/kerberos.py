@@ -8,14 +8,17 @@ from .Utils.u import *
 class KrbGenericArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
         super().__init__(command_line, **kwargs)
-        self.args = []
 
     async def parse_arguments(self):
-        if len(self.command_line) != 0:
-            self.add_argument("input", self.command_line)
-        
-
-
+        if len(self.command_line) > 0:
+            self.add_arg(
+                CommandParameter(
+                    name="input",
+                    type=ParameterType.String,
+                    description="kerbeus entry",
+                    default_value=self.command_line
+                )
+            )
 class KrbAsrepRoastingCommand(CommandBase):
     cmd = "krb-asreproasting"
     needs_admin = False
@@ -194,7 +197,7 @@ class KrbHashCommand(CommandBase):
 class KrbKerberoastingCommand(CommandBase):
     cmd = "krb-kerberoasting"
     needs_admin = False
-    help_cmd = "krb-kerberoasting /spn:SPN ..."
+    help_cmd = "krb-kerberoasting /spn:SPN [/nopreauth:USER] [/dc:DC] [/domain:DOMAIN]\nkrb-kerberoasting /spn:SPN /ticket:BASE64 [/dc:DC]"
     description = "Perform Kerberoasting attack."
     version = 1
     author = "@Oblivion"
