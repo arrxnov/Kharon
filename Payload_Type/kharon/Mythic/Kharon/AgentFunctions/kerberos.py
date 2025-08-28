@@ -12,15 +12,8 @@ class KrbGenericArguments(TaskArguments):
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
-            self.add_arg(
-                CommandParameter(
-                    name="input",
-                    type=ParameterType.String,
-                    description="kerbeus entry",
-                    default_value=self.command_line,
-                    value=self.command_line
-                )
-            )
+            self.add_arg("input", self.command_line, ParameterType.String)
+            
 class KrbAsrepRoastingCommand(CommandBase):
     cmd = "krb-asreproasting"
     needs_admin = False
