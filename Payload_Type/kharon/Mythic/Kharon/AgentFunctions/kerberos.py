@@ -27,7 +27,7 @@ class KrbAsrepRoastingCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-asreproasting.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -52,7 +52,7 @@ class KrbAskTgtCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-asktgt.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -77,7 +77,7 @@ class KrbAskTgsCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-asktgs.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -102,7 +102,7 @@ class KrbChangePwCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-changepw.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -127,7 +127,7 @@ class KrbDescribeCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-describe.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -152,7 +152,7 @@ class KrbDumpCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-dump.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -177,7 +177,7 @@ class KrbHashCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-hash.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -202,7 +202,7 @@ class KrbKerberoastingCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-kerberoasting.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -227,7 +227,7 @@ class KrbKlistCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-klist.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -252,7 +252,7 @@ class KrbPttCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-ptt.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -277,7 +277,7 @@ class KrbPurgeCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-purge.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -302,7 +302,7 @@ class KrbRenewCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-renew.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -327,7 +327,7 @@ class KrbS4uCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-s4u.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -352,7 +352,7 @@ class KrbCrossS4uCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-cross_s4u.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
@@ -377,7 +377,7 @@ class KrbTgtDelegCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         content: bytes = await get_content_by_name("kh_krb-tgtdeleg.x64.o", task.Task.ID)
-        input_str = task.args.get_arg("input")
+        input_str = task.args.get_arg("input") or ""
         bof_args = [{"type": "char", "value": input_str}]
         task.args.remove_arg("input")
         task.args.add_arg("bof_file", content.hex())
