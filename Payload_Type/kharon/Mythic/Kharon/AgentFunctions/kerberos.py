@@ -11,9 +11,9 @@ class KrbGenericArguments(TaskArguments):
         self.args = []
 
     async def parse_arguments(self):
-        if len(self.command_line) == 0:
-            raise Exception("Must provide arguments for Kerberos BOF")
-        self.add_argument("input", self.command_line)
+        if len(self.command_line) != 0:
+            self.add_argument("input", self.command_line)
+        
 
 
 class KrbAsrepRoastingCommand(CommandBase):
