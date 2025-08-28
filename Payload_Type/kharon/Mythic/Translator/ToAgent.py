@@ -257,7 +257,7 @@ def RespTasking(Tasks, Socks) -> bytes:
                             tsk_psr.Pad(Val)
 
         Pkg.Bytes(tsk_psr.buffer)
-        # Dbg3(f"task uuid: {TaskUUID} with [{len(tsk_psr.buffer)} bytes]")
+        Dbg3(f"task uuid: {TaskUUID} with {tsk_psr.buffer} [{len(tsk_psr.buffer)} bytes]")
 
     Dbg3("------------------------")
     return Pkg.buffer

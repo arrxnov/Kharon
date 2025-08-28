@@ -298,7 +298,8 @@ namespace Enm {
         ListPriv,
         Use,
         Rm,
-        Rev2Self
+        Rev2Self,
+        Store
     };
 
     enum Exit {

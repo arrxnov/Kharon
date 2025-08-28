@@ -189,7 +189,6 @@ class TokenStealCommand(CommandBase):
                 Tokens=token_list
             ))
             
-            # Send detailed response to operator
             await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
                 TaskID=task.Task.ID,
                 Response=token_message.encode('utf-8')
@@ -741,13 +740,16 @@ class TokenMakeCommand(CommandBase):
 
     async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
         display_params = f"-username {task.args.get_arg('username')} -password {task.args.get_arg('username')}"
+
         if task.args.get_arg("domain"):
             display_params += f" -domain {task.args.get_arg('domain')}"
+        else:
+            task.args.add_arg("domain", "localhost")        
 
         response = PTTaskCreateTaskingMessageResponse(
             TaskID=task.Task.ID,
             DisplayParams=display_params,
-            CommandName=self.cmd
+            CommandName="token"
         )
         
         task.args.add_arg("action", "make")
