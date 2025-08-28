@@ -99,7 +99,7 @@ class SocksCommand(CommandBase):
                 response.TaskStatus = MythicStatus.Error
                 response.Stderr = resp.Error
                 await SendMythicRPCResponseCreate(MythicRPCResponseCreateMessage(
-                    TaskID=taskData.task.ID,
+                    TaskID=taskData.Task.ID,
                     Response=resp.Error.encode()
                 ))
             else:
