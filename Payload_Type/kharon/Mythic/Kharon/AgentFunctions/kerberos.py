@@ -192,7 +192,7 @@ class KrbHashCommand(CommandBase):
 class KrbKerberoastingCommand(CommandBase):
     cmd = "krb-kerberoasting"
     needs_admin = False
-    help_cmd = "krb-kerberoasting /spn:SPN [/nopreauth:USER] [/dc:DC] [/domain:DOMAIN]\nkrb-kerberoasting /spn:SPN /ticket:BASE64 [/dc:DC]"
+    help_cmd = "krb-kerberoasting /spn:SPN [/nopreauth:USER] [/dc:DC] [/domain:DOMAIN] /ticket:BASE64"
     description = "Perform Kerberoasting attack."
     version = 1
     author = "@Oblivion"
@@ -387,5 +387,27 @@ class KrbTgtDelegCommand(CommandBase):
         resp = PTTaskProcessResponseMessageResponse(TaskID=task.Task.ID, Success=True)
         return resp
 
-    
 
+
+class KrbTriageCommand(CommandBase):
+    cmd = "krb-triage"
+    needs_admin = False
+    help_cmd = "krb-triage [/luid:LOGINID] [/user:USER] [/service:SERVICE] [/client:CLIENT]"
+    description = "List tickets in table format."
+    version = 1
+    author = "@LaRancion"
+    argument_class = KrbGenericArguments
+
+    async def create_go_tasking(self, task: PTTaskMessageAllData) -> PTTaskCreateTaskingMessageResponse:
+        content: bytes = await get_content_by_name("kh_krb-triage.x64.o", task.Task.ID)
+        input_str = task.args.get_arg("input") or ""
+        bof_args = [{"type": "char", "value": input_str}]
+        task.args.remove_arg("input")
+        task.args.add_arg("bof_file", content.hex())
+        task.args.add_arg("bof_id", 0, ParameterType.Number)
+        task.args.add_arg("bof_args", json.dumps(bof_args))
+        return PTTaskCreateTaskingMessageResponse(TaskID=task.Task.ID, CommandName="exec-bof", TokenID=task.Task.TokenID, DisplayParams=input_str)
+
+    async def process_response(self, task: PTTaskMessageAllData, response: any) -> PTTaskProcessResponseMessageResponse:
+        resp = PTTaskProcessResponseMessageResponse(TaskID=task.Task.ID, Success=True)
+        return resp
