@@ -1050,6 +1050,10 @@ auto DECLFN Task::Config(
                 INT16 Month = (INT16)Self->Psr->Int32( Parser );
                 INT16 Day   = (INT16)Self->Psr->Int32( Parser );
 
+                Self->Session.KillDate.Day   = Day;
+                Self->Session.KillDate.Month = Month;
+                Self->Session.KillDate.Year  = Year;
+
                 break;
             }
         }
