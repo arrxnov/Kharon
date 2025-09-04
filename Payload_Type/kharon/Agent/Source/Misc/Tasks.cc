@@ -1020,18 +1020,6 @@ auto DECLFN Task::Config(
                 
                 break;
             }
-            case Enm::Config::CurDir: {
-                if ( Self->Ps->Ctx.CurrentDir ) {
-                    hFree( Self->Ps->Ctx.CurrentDir );
-                }
-
-                PCHAR CurDirTmp  = Self->Psr->Str( Parser, &TmpVal );
-                PCHAR CurrentDir = (PCHAR)hAlloc( TmpVal );
-
-                Mem::Copy( CurrentDir, CurDirTmp, TmpVal );
-
-                Self->Ps->Ctx.CurrentDir = CurrentDir; break;
-            }
             case Enm::Config::Mask: {
                 INT32 TechniqueID = Self->Psr->Int32( Parser );
                 if ( 

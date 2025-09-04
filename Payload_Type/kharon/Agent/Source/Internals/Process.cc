@@ -63,7 +63,6 @@ auto DECLFN Process::Create(
     if ( Self->Ps->Ctx.ParentID  ) { UpdateCount++; };
 
     SiEx.StartupInfo.cb          = sizeof( STARTUPINFOEXA );
-    SiEx.StartupInfo.dwFlags     = EXTENDED_STARTUPINFO_PRESENT;
     SiEx.StartupInfo.wShowWindow = SW_HIDE;
 
     PsFlags |= CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT;
