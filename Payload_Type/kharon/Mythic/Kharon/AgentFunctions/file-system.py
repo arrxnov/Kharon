@@ -532,7 +532,7 @@ class PwdCommand(CommandBase):
             
         try:
             RawResponse = bytes.fromhex(response)
-            if RawResponse and RawResponse[0] == 0x13:
+            if RawResponse and RawResponse[0] == SB_FS_PWD:
                 RawResponse = RawResponse[1:]
             Psr = Parser(RawResponse, len(RawResponse))
             output = Psr.Str()
