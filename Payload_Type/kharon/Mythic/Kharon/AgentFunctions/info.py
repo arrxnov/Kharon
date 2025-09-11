@@ -77,7 +77,7 @@ class InfoCommand( CommandBase ):
             OsMj  = Psr.Int32();
             OsMn  = Psr.Int32();
             OsBd  = Psr.Int32();
-            PTyp  = Psr.Int32();
+            PTyp  = Psr.Str();
             TotRm = Psr.Int32();
             AvlRm = Psr.Int32();
             UsdRm = Psr.Int32();

@@ -1417,7 +1417,7 @@ auto DECLFN Task::GetInfo(
     Self->Pkg->Int32( Pkg, Self->Machine.OsMjrV );
     Self->Pkg->Int32( Pkg, Self->Machine.OsMnrV );
     Self->Pkg->Int32( Pkg, Self->Machine.OsBuild );
-    Self->Pkg->Int32 (Pkg, Self->Machine.ProductType );
+    Self->Pkg->Str (Pkg, Self->Machine.ProductType );
     Self->Pkg->Int32( Pkg, Self->Machine.TotalRAM );
     Self->Pkg->Int32( Pkg, Self->Machine.AvalRAM );
     Self->Pkg->Int32( Pkg, Self->Machine.UsedRAM );

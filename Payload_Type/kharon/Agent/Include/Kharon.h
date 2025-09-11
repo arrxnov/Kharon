@@ -287,7 +287,7 @@ namespace Root {
             BYTE  OsArch;
             ULONG OsMjrV;
             ULONG OsMnrV;
-            ULONG ProductType;
+            PCHAR ProductType;
             ULONG OsBuild;
         } Machine = {
             .DomName= "-"

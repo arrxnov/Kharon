@@ -321,7 +321,7 @@ auto DECLFN Kharon::Init(
     this->Machine.ProcessorName = (PCHAR)this->Hp->Alloc( ProcBufferSize );
     Mem::Copy( this->Machine.ProcessorName, cProcessorName, ProcBufferSize );
     
-    this->Advapi32.RegOpenKeyA(
+    this->Advapi32.RegOpenKeyExA(
         HKEY_LOCAL_MACHINE, cProductTypeReg,
         0, KEY_READ, &KeyHandle
     );
