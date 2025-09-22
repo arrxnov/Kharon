@@ -1377,7 +1377,7 @@ auto DECLFN Task::Exit(
 
     if ( ExitType == Enm::Exit::Proc ) {
         Self->Ntdll.RtlExitUserProcess( EXIT_SUCCESS );
-    } else if ( ExitType == Enm::Exit::Thread ) {
+    } else {
         Self->Ntdll.RtlExitUserThread( EXIT_SUCCESS );
     }
 
