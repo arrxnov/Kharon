@@ -523,7 +523,7 @@ class ScDelCommand(CommandBase):
         resp = PTTaskProcessResponseMessageResponse(TaskID=task.Task.ID, Success=True)
         return resp
 
-class ScCreateArguments(TaskArguments):
+class ScqueryArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
         super().__init__(command_line, **kwargs)
         self.args = [
@@ -623,10 +623,10 @@ class ScCreateArguments(TaskArguments):
         self.load_args_from_dictionary(dictionary)
 
 
-class ScCreateCommand(CommandBase):
-    cmd = "sc-create"
+class ScStartCommand(CommandBase):
+    cmd = "sc-query"
     needs_admin = False
-    help_cmd = "sc-create -hostname [hostname] -service_name [service_name] -path [path] -display_name [name] -description [desc] -ignore_mode [0|1] -start_mode [0-4] -service_type [1-4]"
+    help_cmd = "sc-query -hostname [hostname] -service_name [service_name] -path [path] -display_name [name] -description [desc] -ignore_mode [0|1] -start_mode [0-4] -service_type [1-4]"
     description = \
     """
     Enumerates status for active services and drivers.
