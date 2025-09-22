@@ -122,7 +122,7 @@ def RespTasking(Tasks, Socks) -> bytes:
             
             if "method" in Parameters:
                 tsk_psr.Int32( Parameters["method"] )
-                Dbg3(f'''added method {Parameters["method"]}''')
+                Dbg3(f"added method {Parameters["method"]}")
 
             if "sc_file" in Parameters:
                 try:
